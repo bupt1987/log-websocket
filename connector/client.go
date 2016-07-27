@@ -57,7 +57,7 @@ func ServeWs(hub *Hub, w http.ResponseWriter, r *http.Request) {
 		conn: conn,
 		send: make(chan []byte, 256),
 	}
-	fmt.Printf("%s connected", r.RemoteAddr)
+	fmt.Printf("%s connected\n", r.RemoteAddr)
 	hub.register <- client
 	go client.push()
 	client.listen()
@@ -77,7 +77,7 @@ func (c *Client) listen() {
 		_, message, err := c.conn.ReadMessage()
 		if err != nil {
 			if websocket.IsUnexpectedCloseError(err, websocket.CloseGoingAway) {
-				fmt.Printf("error: %v", err)
+				fmt.Printf("error: %v\n", err)
 			}
 			break
 		}

@@ -6,7 +6,6 @@ package main
 
 import (
 	"flag"
-	"log"
 	"net/http"
 	"net"
 	"os"
@@ -46,7 +45,7 @@ func main() {
 		})
 		err := http.ListenAndServe(*addr, nil)
 		if err != nil {
-			log.Fatal("ListenAndServe: ", err)
+			panic(err)
 		}
 	}()
 

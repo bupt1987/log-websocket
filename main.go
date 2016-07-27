@@ -64,7 +64,7 @@ func main() {
 		for {
 			conn, err := listen.Accept()
 			if err != nil {
-				log.Println("connection error:", err)
+				fmt.Println("connection error:", err)
 				continue
 			}
 			chConn <- conn
@@ -89,7 +89,7 @@ func main() {
 					}
 					if err != nil {
 						if err != io.EOF {
-							log.Println("read log error:", err.Error())
+							fmt.Println("read log error:", err.Error())
 						}
 						break
 					}

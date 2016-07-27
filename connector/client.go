@@ -2,11 +2,11 @@ package connector
 
 import (
 	"time"
-	"log"
 	"bytes"
 	"net/http"
 
 	"github.com/gorilla/websocket"
+	"fmt"
 )
 
 const (
@@ -49,7 +49,7 @@ var upgrader = websocket.Upgrader{
 func ServeWs(hub *Hub, w http.ResponseWriter, r *http.Request) {
 	conn, err := upgrader.Upgrade(w, r, nil)
 	if err != nil {
-		log.Println(err)
+		fmt.Println(err)
 		return
 	}
 	client := &Client{
@@ -57,7 +57,7 @@ func ServeWs(hub *Hub, w http.ResponseWriter, r *http.Request) {
 		conn: conn,
 		send: make(chan []byte, 256),
 	}
-	log.Printf("%s connected", r.RemoteAddr)
+	fmt.Printf("%s connected", r.RemoteAddr)
 	hub.register <- client
 	go client.push()
 	client.listen()
@@ -77,7 +77,7 @@ func (c *Client) listen() {
 		_, message, err := c.conn.ReadMessage()
 		if err != nil {
 			if websocket.IsUnexpectedCloseError(err, websocket.CloseGoingAway) {
-				log.Printf("error: %v", err)
+				fmt.Printf("error: %v", err)
 			}
 			break
 		}

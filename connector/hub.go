@@ -1,6 +1,6 @@
 package connector
 
-import "log"
+import "fmt"
 
 type Hub struct {
 	// Registered clients.
@@ -36,7 +36,7 @@ func (h *Hub) Run() {
 				close(client.send)
 			}
 		case message := <-h.Broadcast:
-			log.Printf("%s", message)
+			fmt.Printf("%s", message)
 			for client := range h.clients {
 				select {
 				case client.send <- message:

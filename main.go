@@ -41,7 +41,7 @@ func main() {
 
 	// websocket listen
 	go func() {
-		http.HandleFunc("/stock", func(w http.ResponseWriter, r *http.Request) {
+		http.HandleFunc("/", func(w http.ResponseWriter, r *http.Request) {
 			connector.ServeWs(hub, w, r)
 		})
 		err := http.ListenAndServe(*addr, nil)

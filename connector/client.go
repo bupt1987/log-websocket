@@ -57,6 +57,7 @@ func ServeWs(hub *Hub, w http.ResponseWriter, r *http.Request) {
 		conn: conn,
 		send: make(chan []byte, 256),
 	}
+	log.Printf("%s connected", r.RemoteAddr)
 	hub.register <- client
 	go client.push()
 	client.listen()

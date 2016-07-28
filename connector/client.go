@@ -2,7 +2,6 @@ package connector
 
 import (
 	"time"
-	"bytes"
 	"net/http"
 
 	"github.com/gorilla/websocket"
@@ -12,29 +11,17 @@ import (
 const (
 	// Time allowed to write a message to the peer.
 	writeWait = 10 * time.Second
-
 	// Time allowed to read the next pong message from the peer.
 	pongWait = 60 * time.Second
-
 	// Send pings to peer with this period. Must be less than pongWait.
 	pingPeriod = (pongWait * 9) / 10
-
 	// Maximum message size allowed from peer.
 	maxMessageSize = 512
 )
 
-var (
-	newline = []byte{'\n'}
-	space = []byte{' '}
-)
-
 type Client struct {
 	hub  *Hub
-
-	// The websocket connection.
 	conn *websocket.Conn
-
-	// Buffered channel of outbound messages.
 	send chan []byte
 }
 
@@ -57,7 +44,6 @@ func ServeWs(hub *Hub, w http.ResponseWriter, r *http.Request) {
 		conn: conn,
 		send: make(chan []byte, 256),
 	}
-	fmt.Printf("%s connected\n", r.RemoteAddr)
 	hub.register <- client
 	go client.push()
 	client.listen()
@@ -71,7 +57,8 @@ func (c *Client) listen() {
 	c.conn.SetReadLimit(maxMessageSize)
 	c.conn.SetReadDeadline(time.Now().Add(pongWait))
 	c.conn.SetPongHandler(func(string) error {
-		c.conn.SetReadDeadline(time.Now().Add(pongWait)); return nil
+		c.conn.SetReadDeadline(time.Now().Add(pongWait))
+		return nil
 	})
 	for {
 		_, message, err := c.conn.ReadMessage()
@@ -81,7 +68,6 @@ func (c *Client) listen() {
 			}
 			break
 		}
-		message = bytes.TrimSpace(bytes.Replace(message, newline, space, -1))
 		c.hub.Broadcast <- message
 	}
 }
@@ -101,7 +87,6 @@ func (c *Client) push() {
 		select {
 		case message, ok := <-c.send:
 			if !ok {
-				// The hub closed the channel.
 				c.write(websocket.CloseMessage, []byte{})
 				return
 			}
@@ -113,7 +98,6 @@ func (c *Client) push() {
 			}
 			w.Write(message)
 
-			// Add queued chat messages to the current websocket message.
 			n := len(c.send)
 			for i := 0; i < n; i++ {
 				w.Write(<-c.send)

@@ -70,12 +70,15 @@ func main() {
 		}
 	}()
 
+	fmt.Println("Push running...")
+
 	for {
 		select {
 		case <-chSig:
 			if err := os.Remove(*socket); err != nil {
 				panic(err)
 			}
+			fmt.Println("Push stoped")
 			return
 		case conn := <-chConn:
 			go func() {

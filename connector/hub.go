@@ -6,21 +6,16 @@ import (
 )
 
 type Hub struct {
-	// Registered clients.
+	num        int64
 	clients    map[*Client]bool
-
-	// Inbound messages from the clients.
 	Broadcast  chan []byte
-
-	// Register requests from the clients.
 	register   chan *Client
-
-	// Unregister requests from clients.
 	unregister chan *Client
 }
 
 func NewHub() *Hub {
 	return &Hub{
+		num: 0,
 		Broadcast:  make(chan []byte, runtime.NumCPU()),
 		register:   make(chan *Client),
 		unregister: make(chan *Client),
@@ -33,14 +28,17 @@ func (h *Hub) Run() {
 		select {
 		case client := <-h.register:
 			h.clients[client] = true
+			h.num ++;
+			fmt.Printf("%s connected, total: %v\n", client.conn.RemoteAddr(), h.num)
 		case client := <-h.unregister:
 			if _, ok := h.clients[client]; ok {
-				fmt.Printf("%s close\n", client.conn.RemoteAddr())
 				delete(h.clients, client)
 				close(client.send)
+				h.num --;
+				fmt.Printf("%s close, total: %v\n", client.conn.RemoteAddr(), h.num)
 			}
 		case message := <-h.Broadcast:
-			go func(){
+			go func() {
 				for client := range h.clients {
 					select {
 					case client.send <- message:

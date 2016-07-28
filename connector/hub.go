@@ -32,19 +32,25 @@ func (h *Hub) Run() {
 			fmt.Printf("%s connected, total: %v\n", client.conn.RemoteAddr(), h.num)
 		case client := <-h.unregister:
 			if _, ok := h.clients[client]; ok {
-				delete(h.clients, client)
-				close(client.send)
+				func() {
+					defer func() {
+						recover()
+					}()
+					delete(h.clients, client)
+					close(client.send)
+				}()
 				h.num --;
 				fmt.Printf("%s close, total: %v\n", client.conn.RemoteAddr(), h.num)
 			}
 		case message := <-h.Broadcast:
 			go func() {
 				for client := range h.clients {
-					select {
-					case client.send <- message:
-					default:
-						h.unregister <- client
-					}
+					func() {
+						defer func() {
+							recover()
+						}()
+						client.send <- message
+					}()
 				}
 			}()
 		}

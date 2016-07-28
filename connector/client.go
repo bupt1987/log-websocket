@@ -49,6 +49,11 @@ func ServeWs(hub *Hub, w http.ResponseWriter, r *http.Request) {
 	client.listen()
 }
 
+func (c *Client) write(mt int, payload []byte) error {
+	c.conn.SetWriteDeadline(time.Now().Add(writeWait))
+	return c.conn.WriteMessage(mt, payload)
+}
+
 func (c *Client) listen() {
 	defer func() {
 		c.hub.unregister <- c
@@ -70,11 +75,6 @@ func (c *Client) listen() {
 		}
 		c.hub.Broadcast <- message
 	}
-}
-
-func (c *Client) write(mt int, payload []byte) error {
-	c.conn.SetWriteDeadline(time.Now().Add(writeWait))
-	return c.conn.WriteMessage(mt, payload)
 }
 
 func (c *Client) push() {

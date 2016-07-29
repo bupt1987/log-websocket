@@ -15,6 +15,7 @@ for ($i = 0; $i < 100000; $i++) {
     if ($socket) {
         @fwrite($socket, $sStr);
         echo $sStr;
+        //这里为了测试性能特意fclose, 在实际使用中可以不fclose
         fclose($socket);
         usleep(1);
     } else {

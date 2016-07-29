@@ -1,4 +1,8 @@
 # log-websockt
+基于 github.com/gorilla/websocket 实现的websocket    
+
+#### 安装
+`go get github.com/bupt1987/log-websockt`
 
 ~~~~
 开启websocket 服务,端口: 9090

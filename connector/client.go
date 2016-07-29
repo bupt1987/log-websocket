@@ -6,6 +6,7 @@ import (
 
 	"github.com/gorilla/websocket"
 	"fmt"
+	"strings"
 )
 
 const (
@@ -20,9 +21,10 @@ const (
 )
 
 type Client struct {
-	hub  *Hub
-	conn *websocket.Conn
-	send chan []byte
+	listens []string
+	hub     *Hub
+	conn    *websocket.Conn
+	send    chan []byte
 }
 
 var upgrader = websocket.Upgrader{
@@ -39,7 +41,19 @@ func ServeWs(hub *Hub, w http.ResponseWriter, r *http.Request) {
 		fmt.Println(err)
 		return
 	}
+	r.ParseForm()
+	var listens = strings.TrimSpace(r.Form.Get("listens"))
+	if len(listens) == 0 {
+		conn.Close()
+		return
+	}
+	//如果listens里面有*的话则只保留*
+	var checkListens = "," + listens + ",";
+	if checkListens != ",*," && strings.Index(checkListens, ",*,") != -1 {
+		listens = "*"
+	}
 	client := &Client{
+		listens: strings.Split(listens, ","),
 		hub: hub,
 		conn: conn,
 		send: make(chan []byte, 256),

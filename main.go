@@ -12,7 +12,7 @@ import (
 	"syscall"
 	"fmt"
 
-	"github.com/bupt1987/log-websockt/connector"
+	"github.com/bupt1987/log-websocket/connector"
 )
 
 var addr = flag.String("addr", ":9090", "http service address")

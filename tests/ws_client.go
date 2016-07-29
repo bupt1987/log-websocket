@@ -15,6 +15,7 @@ import (
 )
 
 var addr = flag.String("addr", "127.0.0.1:9090", "http service address")
+var listens = flag.String("listens", "*", "listens message type")
 
 func main() {
 	flag.Parse()
@@ -26,7 +27,7 @@ func main() {
 	signal.Notify(interrupt, syscall.SIGTERM)
 
 
-	u := url.URL{Scheme: "ws", Host: *addr, Path: "/"}
+	u := url.URL{Scheme: "ws", Host: *addr, Path: "/", RawQuery: "listens=" + *listens}
 	log.Printf("connecting to %s", u.String())
 
 	c, _, err := websocket.DefaultDialer.Dial(u.String(), nil)

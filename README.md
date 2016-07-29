@@ -1,4 +1,4 @@
-# log-websockt
+# log-websocket
 监听本地socket ,把输入的文本信息push到连接到websocket的客户端
 websocket 基于 github.com/gorilla/websocket  
 

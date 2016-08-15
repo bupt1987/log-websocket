@@ -1,9 +1,9 @@
 package connector
 
 import (
-	"fmt"
 	"runtime"
 	"bytes"
+	"github.com/cihub/seelog"
 )
 
 type Hub struct {
@@ -52,7 +52,7 @@ func (h *Hub) Run() {
 				h.listens[listen][client] = true
 			}
 			h.num ++;
-			fmt.Printf("%s connected, listen : %v, total connected: %v\n", client.conn.RemoteAddr(), client.listens, h.num)
+			seelog.Infof("%s connected, listen : %v, total connected: %v", client.conn.RemoteAddr(), client.listens, h.num)
 		case client := <-h.unregister:
 			if _, ok := h.clients[client]; ok {
 				func() {
@@ -69,14 +69,14 @@ func (h *Hub) Run() {
 					close(client.send)
 				}()
 				h.num --;
-				fmt.Printf("%s close, total connected: %v\n", client.conn.RemoteAddr(), h.num)
+				seelog.Infof("%s close, total connected: %v", client.conn.RemoteAddr(), h.num)
 			}
 		case message := <-h.Broadcast:
 			go func() {
 				var msgArr = bytes.SplitN(message, comma, 2)
 
 				if (len(msgArr) != 2) {
-					fmt.Printf("message format is error: %s\n", message)
+					seelog.Errorf("received message format is error: %s", bytes.TrimRight(message, "\n"))
 					return
 				}
 

@@ -3,7 +3,7 @@
 websocket 基于 github.com/gorilla/websocket  
 
 ## 安装
-`go get github.com/bupt1987/log-websocket`
+`go get -u github.com/bupt1987/log-websocket`
 
 ## 使用须知
 ~~~~

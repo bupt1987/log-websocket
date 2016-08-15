@@ -3,10 +3,9 @@ package connector
 import (
 	"time"
 	"net/http"
-
-	"github.com/gorilla/websocket"
-	"fmt"
 	"strings"
+	"github.com/gorilla/websocket"
+	"github.com/cihub/seelog"
 )
 
 const (
@@ -38,7 +37,7 @@ var upgrader = websocket.Upgrader{
 func ServeWs(hub *Hub, w http.ResponseWriter, r *http.Request) {
 	conn, err := upgrader.Upgrade(w, r, nil)
 	if err != nil {
-		fmt.Println(err)
+		seelog.Error(err)
 		return
 	}
 	r.ParseForm()
@@ -83,7 +82,7 @@ func (c *Client) listen() {
 		_, message, err := c.conn.ReadMessage()
 		if err != nil {
 			if websocket.IsUnexpectedCloseError(err, websocket.CloseGoingAway) {
-				fmt.Printf("error: %v\n", err)
+				seelog.Errorf("close error: %v", err)
 			}
 			break
 		}

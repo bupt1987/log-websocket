@@ -11,15 +11,34 @@ import (
 	"os/signal"
 	"syscall"
 	"fmt"
-
 	"github.com/bupt1987/log-websocket/connector"
+	"github.com/cihub/seelog"
 )
 
 var addr = flag.String("addr", ":9090", "http service address")
 var socket = flag.String("socket", "/tmp/log-stock.socket", "Listen socket address")
 var hub = connector.NewHub()
 
+func init() {
+	newLogger, err := seelog.LoggerFromConfigAsString(
+		"<seelog>" +
+			"<outputs formatid=\"main\">" +
+			"<console />" +
+			"</outputs>" +
+			"<formats>" +
+			"<format id=\"main\" format=\"[%Date %Time][%Level] %Msg%n\"/>" +
+			"</formats>" +
+			"</seelog>")
+	if err != nil {
+		panic(err)
+	}
+
+	seelog.ReplaceLogger(newLogger);
+}
+
 func main() {
+	defer seelog.Flush()
+
 	flag.Usage = func() {
 		fmt.Fprintf(os.Stderr, "Usage: %s [OPTIONS]\n", os.Args[0])
 		flag.PrintDefaults()
@@ -59,14 +78,14 @@ func main() {
 		for {
 			conn, err := listen.Accept()
 			if err != nil {
-				fmt.Println("connection error:", err)
+				seelog.Error("connection error:", err)
 				continue
 			}
 			chConn <- conn
 		}
 	}()
 
-	fmt.Println("Push running...")
+	seelog.Info("Push running...")
 
 	for {
 		select {
@@ -74,7 +93,7 @@ func main() {
 			if err := os.Remove(*socket); err != nil {
 				panic(err)
 			}
-			fmt.Println("Push stoped")
+			seelog.Info("Push stoped")
 			return
 		case conn := <-chConn:
 			go func() {
@@ -87,7 +106,7 @@ func main() {
 					}
 					if err != nil {
 						if err != io.EOF {
-							fmt.Println("read log error:", err.Error())
+							seelog.Error("read log error:", err.Error())
 						}
 						break
 					}

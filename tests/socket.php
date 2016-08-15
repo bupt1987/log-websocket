@@ -26,5 +26,5 @@ for ($i = 0; $i < 100000; $i++) {
 }
 
 function makePack($sCategory, $sMsg) {
-    return $sCategory . ',' . $sMsg . "\n";
+    return $sCategory . "\n";
 }

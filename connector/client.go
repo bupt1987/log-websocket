@@ -86,7 +86,11 @@ func (c *Client) listen() {
 			}
 			break
 		}
-		c.hub.Broadcast <- message
+		msg := FormatMsg(message)
+		if (msg == nil) {
+			continue
+		}
+		c.hub.Broadcast <- msg
 	}
 }
 

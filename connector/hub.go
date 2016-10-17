@@ -2,7 +2,6 @@ package connector
 
 import (
 	"runtime"
-	"bytes"
 	"github.com/cihub/seelog"
 )
 
@@ -10,25 +9,23 @@ type Hub struct {
 	num        int64
 	clients    map[*Client]bool
 	listens    map[string]map[*Client]bool
-	Broadcast  chan []byte
+	Broadcast  chan [][]byte
 	register   chan *Client
 	unregister chan *Client
 }
 
+var comma = []byte{','}
+
 func NewHub() *Hub {
 	return &Hub{
 		num: 0,
-		Broadcast:  make(chan []byte, runtime.NumCPU()),
+		Broadcast:  make(chan [][]byte, runtime.NumCPU()),
 		register:   make(chan *Client),
 		unregister: make(chan *Client),
 		clients:    make(map[*Client]bool),
 		listens:    make(map[string]map[*Client]bool),
 	}
 }
-
-var (
-	comma = []byte{','}
-)
 
 func (h *Hub) push(client *Client, msg []byte) {
 	defer func() {
@@ -73,28 +70,21 @@ func (h *Hub) Run() {
 			}
 		case message := <-h.Broadcast:
 			go func() {
-				var msgArr = bytes.SplitN(message, comma, 2)
-
-				if (len(msgArr) != 2) {
-					seelog.Errorf("received message format is error: %s", bytes.TrimRight(message, "\n"))
-					return
-				}
-
-				if string(msgArr[0]) != "*" {
-					if listens, ok := h.listens[string(msgArr[0])]; ok {
+				if string(message[0]) != "*" {
+					if listens, ok := h.listens[string(message[0])]; ok {
 						for client := range listens {
-							h.push(client, msgArr[1])
+							h.push(client, message[1])
 						}
 					}
 					//再给监听所有的客户端发送数据
 					if listens, ok := h.listens["*"]; ok {
 						for client := range listens {
-							h.push(client, msgArr[1])
+							h.push(client, message[1])
 						}
 					}
 				} else {
 					for client := range h.clients {
-						h.push(client, msgArr[1])
+						h.push(client, message[1])
 					}
 				}
 			}()

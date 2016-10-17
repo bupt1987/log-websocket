@@ -13,11 +13,17 @@ import (
 	"fmt"
 	"github.com/bupt1987/log-websocket/connector"
 	"github.com/cihub/seelog"
+	"github.com/oschwald/geoip2-golang"
+	"encoding/json"
+	"github.com/bupt1987/log-websocket/analysis"
 )
 
-var addr = flag.String("addr", ":9090", "http service address")
-var socket = flag.String("socket", "/tmp/log-stock.socket", "Listen socket address")
-var hub = connector.NewHub()
+var (
+	addr = flag.String("addr", ":9090", "http service address")
+	socket = flag.String("socket", "/tmp/log-stock.socket", "Listen socket address")
+	geoipdata = flag.String("geoipdata", "./GeoLite2-City.mmdb", "Listen socket address")
+	hub = connector.NewHub()
+)
 
 func init() {
 	newLogger, err := seelog.LoggerFromConfigAsString(
@@ -44,6 +50,15 @@ func main() {
 		flag.PrintDefaults()
 	}
 	flag.Parse()
+
+	geoip, err := geoip2.Open(*geoipdata)
+	if err != nil {
+		seelog.Error("load geoip data error:", err.Error())
+		return
+	}
+	defer geoip.Close()
+
+	go analysis.Run()
 
 	chConn := make(chan net.Conn, runtime.NumCPU())
 	chSig := make(chan os.Signal)
@@ -75,13 +90,64 @@ func main() {
 		if err := os.Chmod(*socket, 0777); err != nil {
 			panic(err)
 		}
-		for {
-			conn, err := listen.Accept()
-			if err != nil {
-				seelog.Error("connection error:", err)
-				continue
+		go func() {
+			for {
+				conn, err := listen.Accept()
+				if err != nil {
+					seelog.Error("connection error:", err)
+					continue
+				}
+				chConn <- conn
 			}
-			chConn <- conn
+		}()
+
+		for {
+			select {
+			case conn := <-chConn:
+				go func() {
+					defer conn.Close()
+					reader := bufio.NewReader(conn)
+					for {
+						data, err := reader.ReadBytes('\n')
+						if len(data) > 0 {
+							var message = connector.FormatMsg(data)
+							if (message == nil) {
+								continue
+							}
+
+							if string(message[0]) == "online_user" {
+								res := analysis.UserLog{}
+								json.Unmarshal(message[1], &res)
+								ip := net.ParseIP(res.Ip)
+								city, err := geoip.City(ip)
+								var iso = ""
+								var name = ""
+								if err != nil {
+									seelog.Error("geoip error: ", err.Error())
+								} else {
+									iso = city.Country.IsoCode
+									name = city.Subdivisions[0].Names["en"]
+								}
+								analysis.ActiveUser(&analysis.OnlineUser{
+									Uid: res.Uid,
+									Ip: res.Ip,
+									CountryIsoCode: iso,
+									CountryName: name,
+									Time: res.Time,
+								})
+							} else {
+								hub.Broadcast <- message
+							}
+						}
+						if err != nil {
+							if err != io.EOF {
+								seelog.Error("read log error:", err.Error())
+							}
+							break
+						}
+					}
+				}()
+			}
 		}
 	}()
 
@@ -95,23 +161,6 @@ func main() {
 			}
 			seelog.Info("Push stoped")
 			return
-		case conn := <-chConn:
-			go func() {
-				defer conn.Close()
-				reader := bufio.NewReader(conn)
-				for {
-					data, err := reader.ReadBytes('\n')
-					if len(data) > 0 {
-						hub.Broadcast <- data
-					}
-					if err != nil {
-						if err != io.EOF {
-							seelog.Error("read log error:", err.Error())
-						}
-						break
-					}
-				}
-			}()
 		}
 	}
 

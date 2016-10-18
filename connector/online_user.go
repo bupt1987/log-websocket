@@ -33,8 +33,8 @@ type UserSet struct {
 
 const (
 	REDIS_ONLINE_USER_KEY = "dwlog_stock_online_user"
-	MAX_CHECK_TIME = 300
-	CHECK_TIME_AFTER = 30
+	MAX_CHECK_TIME = 360
+	CHECK_TIME_AFTER = 60
 )
 
 func NewUserSet(hub *Hub) *UserSet {

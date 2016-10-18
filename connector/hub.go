@@ -9,17 +9,15 @@ type Hub struct {
 	num        int64
 	clients    map[*Client]bool
 	listens    map[string]map[*Client]bool
-	Broadcast  chan [][]byte
+	Broadcast  chan *Msg
 	register   chan *Client
 	unregister chan *Client
 }
 
-var comma = []byte{','}
-
 func NewHub() *Hub {
 	return &Hub{
 		num: 0,
-		Broadcast:  make(chan [][]byte, runtime.NumCPU()),
+		Broadcast:  make(chan *Msg, runtime.NumCPU()),
 		register:   make(chan *Client),
 		unregister: make(chan *Client),
 		clients:    make(map[*Client]bool),
@@ -68,23 +66,23 @@ func (h *Hub) Run() {
 				h.num --;
 				seelog.Infof("%s close, total connected: %v", client.conn.RemoteAddr(), h.num)
 			}
-		case message := <-h.Broadcast:
+		case msg := <-h.Broadcast:
 			go func() {
-				if string(message[0]) != "*" {
-					if listens, ok := h.listens[string(message[0])]; ok {
+				if msg.Category != "*" {
+					if listens, ok := h.listens[msg.Category]; ok {
 						for client := range listens {
-							h.push(client, message[1])
+							h.push(client, msg.Data)
 						}
 					}
 					//再给监听所有的客户端发送数据
 					if listens, ok := h.listens["*"]; ok {
 						for client := range listens {
-							h.push(client, message[1])
+							h.push(client, msg.Data)
 						}
 					}
 				} else {
 					for client := range h.clients {
-						h.push(client, message[1])
+						h.push(client, msg.Data)
 					}
 				}
 			}()

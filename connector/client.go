@@ -79,14 +79,14 @@ func (c *Client) listen() {
 		return nil
 	})
 	for {
-		_, message, err := c.conn.ReadMessage()
+		_, data, err := c.conn.ReadMessage()
 		if err != nil {
 			if websocket.IsUnexpectedCloseError(err, websocket.CloseGoingAway) {
 				seelog.Errorf("close error: %v", err)
 			}
 			break
 		}
-		msg := FormatMsg(message)
+		msg := FormatMsg(data)
 		if (msg == nil) {
 			continue
 		}

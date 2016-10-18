@@ -11,8 +11,9 @@ for ($i = 1; $i <= 100; $i++) {
     if ($socket) {
         $sStr = json_encode([
             'uid' => $i,
-            'ip' => '81.2.69.142',
-            'time' => time() + $i * 10,
+            'ip' => '10.11.104.190',
+            'start_time' => time() + $i * 10,
+            'end_time' => time() + $i * 10,
         ]);
         $sFormatStr = makePack($sCategory, $sStr);
         @fwrite($socket, $sFormatStr);

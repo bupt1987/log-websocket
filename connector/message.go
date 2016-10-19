@@ -10,6 +10,7 @@ import (
 var comma = []byte{','}
 
 const (
+	LOG_TYPE_ONLINE_USER_AREA = "online_user_area"
 	LOG_TYPE_ONLINE_USER = "online_user"
 	LOG_TYPE_NORMAL = "*"
 )
@@ -60,8 +61,8 @@ type OnlineUserMessage struct {
 }
 
 func (m *OnlineUserMessage) Process(msg *Msg) {
-	var iso = ""
-	var name = ""
+	var isoCode = ""
+	var countryName = ""
 	userLog := UserLog{}
 	json.Unmarshal(msg.Data, &userLog)
 
@@ -71,16 +72,16 @@ func (m *OnlineUserMessage) Process(msg *Msg) {
 		if err != nil {
 			seelog.Error("geoip error: ", err.Error())
 		} else if city.Country.IsoCode != "" {
-			iso = city.Country.IsoCode
-			name = city.Subdivisions[0].Names["en"]
+			isoCode = city.Country.IsoCode
+			countryName = city.Country.Names["en"]
 		}
 	}
 
 	m.UserSet.NewUser(&User{
 		Uid: userLog.Uid,
 		Ip: userLog.Ip,
-		CountryIsoCode: iso,
-		CountryName: name,
+		IsoCode: isoCode,
+		CountryName: countryName,
 		StartTime: userLog.Start_Time,
 		EndTime: userLog.End_Time,
 	})

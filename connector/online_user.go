@@ -7,6 +7,12 @@ import (
 	"strconv"
 )
 
+type area struct {
+	IsoCode string
+	Name    string
+	UserNum int
+}
+
 type UserLog struct {
 	Uid        int64
 	Ip         string
@@ -15,12 +21,12 @@ type UserLog struct {
 }
 
 type User struct {
-	Uid            int64
-	Ip             string
-	CountryIsoCode string
-	CountryName    string
-	StartTime      int64
-	EndTime        int64
+	Uid         int64
+	Ip          string
+	IsoCode     string
+	CountryName string
+	StartTime   int64
+	EndTime     int64
 }
 
 type UserSet struct {
@@ -28,13 +34,15 @@ type UserSet struct {
 	timeChan chan int
 	userChan chan *User
 	userSet  map[int64]*User
+	areaSet  map[string]*area
 	userNum  int
 }
 
 const (
 	REDIS_ONLINE_USER_KEY = "dwlog_stock_online_user"
-	MAX_CHECK_TIME = 360
-	CHECK_TIME_AFTER = 60
+	REDIS_ONLINE_USER_AREA_KEY = "dwlog_online_user_area"
+	MAX_CHECK_TIME = 60 //test 60, prod 360
+	CHECK_TIME_AFTER = 10 //test 10, prod 60
 )
 
 func NewUserSet(hub *Hub) *UserSet {
@@ -43,6 +51,7 @@ func NewUserSet(hub *Hub) *UserSet {
 		timeChan:  make(chan int, 1),
 		userChan:  make(chan *User, 1024),
 		userSet:   make(map[int64]*User),
+		areaSet:   make(map[string]*area),
 		userNum: 0,
 	}
 }
@@ -59,7 +68,20 @@ func (s *UserSet)Run() {
 			if _, ok := s.userSet[user.Uid]; !ok {
 				s.userNum ++
 				s.userSet[user.Uid] = user
-				seelog.Debugf("New Online User %v %v %v %v %v", user.Uid, user.Ip, user.CountryIsoCode, user.CountryName, user.EndTime)
+
+				if user.IsoCode != "" {
+					if _, ok := s.areaSet[user.IsoCode]; !ok {
+						s.areaSet[user.IsoCode] = &area{
+							IsoCode: user.IsoCode,
+							Name: user.CountryName,
+							UserNum: 1,
+						}
+					} else {
+						s.areaSet[user.IsoCode].UserNum ++
+					}
+				}
+
+				seelog.Debugf("New Online User %v %v %v %v %v", user.Uid, user.Ip, user.IsoCode, user.CountryName, user.EndTime)
 			} else {
 				if s.userSet[user.Uid].EndTime < user.EndTime {
 					s.userSet[user.Uid].EndTime = user.EndTime
@@ -73,30 +95,37 @@ func (s *UserSet)Run() {
 				if (user.EndTime < checkTime) {
 					s.userNum --
 					delete(s.userSet, uid)
+					s.areaSet[user.IsoCode].UserNum --
 				}
 			}
 			seelog.Debugf("current online user: %v", s.userNum)
-			GetRedis().Set(REDIS_ONLINE_USER_KEY, s.userNum, 0)
 
-			data, err := json.Marshal(map[string]string{"data": strconv.Itoa(s.userNum), "category": LOG_TYPE_ONLINE_USER})
-			if (err == nil) {
-				s.hub.Broadcast <- &Msg{Category: LOG_TYPE_ONLINE_USER, Data:data}
-			}
+			s.push(LOG_TYPE_ONLINE_USER, strconv.Itoa(s.userNum))
+			s.push(LOG_TYPE_ONLINE_USER_AREA, s.areaSet)
 
-			//var m runtime.MemStats
-			//runtime.ReadMemStats(&m)
-			///**
-			//HeapSys：程序向应用程序申请的内存
-			//HeapAlloc：堆上目前分配的内存
-			//HeapIdle：堆上目前没有使用的内存
-			//Alloc : 已经被配并仍在使用的字节数
-			//NumGC : GC次数
-			//HeapReleased：回收到操作系统的内存
-			// */
-			//seelog.Debugf("%d,%d,%d,%d,%d,%d\n", m.HeapSys, m.HeapAlloc, m.HeapIdle, m.Alloc, m.NumGC, m.HeapReleased)
-
+			//保存数据
+			oRedis := GetRedis()
+			oRedis.Set(REDIS_ONLINE_USER_KEY, s.userNum, 0)
+			oRedis.Set(REDIS_ONLINE_USER_AREA_KEY, s.json_encode(s.areaSet), 0)
 		}
 	}
+}
+
+func (s *UserSet)push(category string, data interface{}) {
+	res := s.json_encode(map[string]interface{}{
+		"data": data,
+		"category": category,
+	});
+
+	if (res != nil) {
+		seelog.Debugf("user online push: %v", string(res))
+		s.hub.Broadcast <- &Msg{Category: category, Data:res}
+	}
+}
+
+func (s *UserSet)json_encode(data interface{}) []byte {
+	res, _ := json.Marshal(data)
+	return res
 }
 
 func (s *UserSet)NewUser(user *User) {

@@ -9,6 +9,7 @@ import (
 	"os/signal"
 	"github.com/bupt1987/log-websocket/connector"
 	"github.com/cihub/seelog"
+	"time"
 )
 
 func main() {
@@ -79,6 +80,19 @@ func main() {
 			}
 			seelog.Info("Server stoped")
 			return
+		case <-time.After(60 * time.Second):
+		/**
+		HeapSys：程序向应用程序申请的内存
+		HeapAlloc：堆上目前分配的内存
+		HeapIdle：堆上目前没有使用的内存
+		Alloc : 已经被配并仍在使用的字节数
+		NumGC : GC次数
+		HeapReleased：回收到操作系统的内存
+
+			var m runtime.MemStats
+			runtime.ReadMemStats(&m)
+			seelog.Debugf("%d,%d,%d,%d,%d,%d\n", m.HeapSys, m.HeapAlloc, m.HeapIdle, m.Alloc, m.NumGC, m.HeapReleased)
+		*/
 		}
 	}
 

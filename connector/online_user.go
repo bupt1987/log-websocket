@@ -41,8 +41,8 @@ type UserSet struct {
 const (
 	REDIS_ONLINE_USER_KEY = "dwlog_stock_online_user"
 	REDIS_ONLINE_USER_AREA_KEY = "dwlog_online_user_area"
-	MAX_CHECK_TIME = 60 //test 60, prod 360
-	CHECK_TIME_AFTER = 10 //test 10, prod 60
+	MAX_CHECK_TIME = 360 //test 60, prod 360
+	CHECK_TIME_AFTER = 60 //test 10, prod 60
 )
 
 func NewUserSet(hub *Hub) *UserSet {

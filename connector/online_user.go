@@ -95,7 +95,9 @@ func (s *UserSet)Run() {
 				if (user.EndTime < checkTime) {
 					s.userNum --
 					delete(s.userSet, uid)
-					s.areaSet[user.IsoCode].UserNum --
+					if _, ok := s.areaSet[user.IsoCode]; ok {
+						s.areaSet[user.IsoCode].UserNum --
+					}
 				}
 			}
 			seelog.Debugf("current online user: %v", s.userNum)
@@ -103,7 +105,7 @@ func (s *UserSet)Run() {
 			s.push(LOG_TYPE_ONLINE_USER, strconv.Itoa(s.userNum))
 			s.push(LOG_TYPE_ONLINE_USER_AREA, s.areaSet)
 
-			//保存数据
+		//保存数据
 			oRedis := GetRedis()
 			oRedis.Set(REDIS_ONLINE_USER_KEY, s.userNum, 0)
 			oRedis.Set(REDIS_ONLINE_USER_AREA_KEY, s.json_encode(s.areaSet), 0)

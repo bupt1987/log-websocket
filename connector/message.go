@@ -60,18 +60,22 @@ type OnlineUserMessage struct {
 }
 
 func (m *OnlineUserMessage) Process(msg *Msg) {
-	userLog := UserLog{}
-	json.Unmarshal(msg.Data, &userLog)
-	ip := net.ParseIP(userLog.Ip)
-	city, err := GetGeoIp().City(ip)
 	var iso = ""
 	var name = ""
-	if err != nil {
-		seelog.Error("geoip error: ", err.Error())
-	} else if city.Country.IsoCode != "" {
-		iso = city.Country.IsoCode
-		name = city.Subdivisions[0].Names["en"]
+	userLog := UserLog{}
+	json.Unmarshal(msg.Data, &userLog)
+
+	if userLog.Ip != "" {
+		ip := net.ParseIP(userLog.Ip)
+		city, err := GetGeoIp().City(ip)
+		if err != nil {
+			seelog.Error("geoip error: ", err.Error())
+		} else if city.Country.IsoCode != "" {
+			iso = city.Country.IsoCode
+			name = city.Subdivisions[0].Names["en"]
+		}
 	}
+
 	m.UserSet.NewUser(&User{
 		Uid: userLog.Uid,
 		Ip: userLog.Ip,

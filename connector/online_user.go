@@ -102,13 +102,15 @@ func (s *UserSet)Run() {
 			}
 			seelog.Debugf("current online user: %v", s.userNum)
 
+			totalData := map[string]interface{}{"total": s.userNum, "area": s.areaSet}
+
 			s.push(LOG_TYPE_ONLINE_USER, strconv.Itoa(s.userNum))
-			s.push(LOG_TYPE_ONLINE_USER_AREA, s.areaSet)
+			s.push(LOG_TYPE_ONLINE_USER_AREA, totalData)
 
 		//保存数据
 			oRedis := GetRedis()
 			oRedis.Set(REDIS_ONLINE_USER_KEY, s.userNum, 0)
-			oRedis.Set(REDIS_ONLINE_USER_AREA_KEY, s.json_encode(s.areaSet), 0)
+			oRedis.Set(REDIS_ONLINE_USER_AREA_KEY, s.json_encode(totalData), 0)
 		}
 	}
 }

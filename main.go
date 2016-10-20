@@ -40,6 +40,13 @@ func main() {
 	seelog.ReplaceLogger(newLogger);
 	defer seelog.Flush()
 
+	defer func() {
+		if err := os.Remove(*socket); err != nil {
+			seelog.Errorf("delete socket file error: %v", err.Error())
+		}
+		seelog.Info("Server stoped")
+	}()
+
 	//init geoip
 	connector.InitGeoip(*geoipdata)
 	defer connector.GetGeoIp().Close()
@@ -47,9 +54,9 @@ func main() {
 	hub := connector.NewHub()
 	go hub.Run()
 
-	userSet := connector.NewUserSet(hub)
-	defer userSet.Analysis()
+	userSet := connector.NewUserSet("dw_online_user", hub)
 	go userSet.Run()
+	defer userSet.Dump()
 
 	msgWorkers := map[string]connector.MessageWorker{
 		connector.LOG_TYPE_ONLINE_USER: {P: &connector.OnlineUserMessage{UserSet: userSet}},
@@ -78,10 +85,6 @@ func main() {
 	for {
 		select {
 		case <-chSig:
-			if err := os.Remove(*socket); err != nil {
-				panic(err)
-			}
-			seelog.Info("Server stoped")
 			return
 		case <-time.After(60 * time.Second):
 		/**

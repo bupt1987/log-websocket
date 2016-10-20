@@ -48,6 +48,7 @@ func main() {
 	go hub.Run()
 
 	userSet := connector.NewUserSet(hub)
+	defer userSet.Analysis()
 	go userSet.Run()
 
 	msgWorkers := map[string]connector.MessageWorker{
@@ -55,7 +56,9 @@ func main() {
 		connector.LOG_TYPE_NORMAL: {P: &connector.BaseMessage{Hub:hub}},
 	}
 
+	//local socket
 	go connector.NewSocket(*socket, msgWorkers).Listen()
+
 	// websocket listen
 	go func() {
 		http.HandleFunc("/", func(w http.ResponseWriter, r *http.Request) {

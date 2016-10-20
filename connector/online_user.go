@@ -36,16 +36,32 @@ type UserSet struct {
 	userSet  map[int64]*User
 	areaSet  map[string]*area
 	userNum  int
+	pcu      int
 }
 
 const (
 	REDIS_ONLINE_USER_KEY = "dwlog_stock_online_user"
 	REDIS_ONLINE_USER_AREA_KEY = "dwlog_online_user_area"
+	REDIS_CCU_KEY = "dwlog_ccu"
+	REDIS_PCU_KEY = "dwlog_pcu" //当日最高在线人数
 	MAX_CHECK_TIME = 360 //test 60, prod 360
 	CHECK_TIME_AFTER = 60 //test 10, prod 60
+	DATE_TIME_FORMAT = "200601021504"
+	DATE_FORMAT = "20060102"
 )
 
+var today = time.Now().UTC().Format(DATE_FORMAT)
+var oRedis = GetRedis()
+
 func NewUserSet(hub *Hub) *UserSet {
+	_pcu := oRedis.HGet(REDIS_PCU_KEY, today).String()
+	pcu := 0
+	if (_pcu != "") {
+		pcu, _ = strconv.Atoi(_pcu)
+	}
+
+	seelog.Debugf("PCU: %v", pcu)
+
 	return &UserSet{
 		hub: hub,
 		timeChan:  make(chan int, 1),
@@ -53,6 +69,7 @@ func NewUserSet(hub *Hub) *UserSet {
 		userSet:   make(map[int64]*User),
 		areaSet:   make(map[string]*area),
 		userNum: 0,
+		pcu: pcu,
 	}
 }
 
@@ -61,10 +78,6 @@ func (s *UserSet)Run() {
 	for {
 		select {
 		case user := <-s.userChan:
-			var checkTime = time.Now().Unix() - MAX_CHECK_TIME
-			if ( user.EndTime < checkTime) {
-				continue
-			}
 			if _, ok := s.userSet[user.Uid]; !ok {
 				s.userNum ++
 				s.userSet[user.Uid] = user
@@ -88,31 +101,57 @@ func (s *UserSet)Run() {
 				}
 			}
 		case <-s.timeChan:
-			s.timeAfter()
-			seelog.Debug("Start check online user")
-			var checkTime = time.Now().Unix() - MAX_CHECK_TIME
-			for uid, user := range s.userSet {
-				if (user.EndTime < checkTime) {
-					s.userNum --
-					delete(s.userSet, uid)
-					if _, ok := s.areaSet[user.IsoCode]; ok {
-						s.areaSet[user.IsoCode].UserNum --
-					}
-				}
-			}
-			seelog.Debugf("current online user: %v", s.userNum)
-
-			totalData := map[string]interface{}{"total": s.userNum, "area": s.areaSet}
-
-			s.push(LOG_TYPE_ONLINE_USER, strconv.Itoa(s.userNum))
-			s.push(LOG_TYPE_ONLINE_USER_AREA, totalData)
-
-		//保存数据
-			oRedis := GetRedis()
-			oRedis.Set(REDIS_ONLINE_USER_KEY, s.userNum, 0)
-			oRedis.Set(REDIS_ONLINE_USER_AREA_KEY, s.json_encode(totalData), 0)
+			s.Analysis()
 		}
 	}
+}
+
+func (s *UserSet)Analysis() {
+	s.timeAfter()
+	seelog.Debug("Start check online user")
+
+	now := time.Now()
+	_today := now.UTC().Format(DATE_FORMAT)
+
+	var checkTime = now.Unix() - MAX_CHECK_TIME
+	for uid, user := range s.userSet {
+		if (user.EndTime < checkTime) {
+			s.userNum --
+			delete(s.userSet, uid)
+			if _, ok := s.areaSet[user.IsoCode]; ok {
+				s.areaSet[user.IsoCode].UserNum --
+			}
+		}
+	}
+	seelog.Debugf("current online user: %v", s.userNum)
+
+	bDiffDay := _today != today
+	if (s.userNum > s.pcu || bDiffDay) {
+		s.pcu = s.userNum
+		oRedis.HSet(REDIS_PCU_KEY, _today, strconv.Itoa(s.pcu))
+	}
+	if (bDiffDay) {
+		today = _today
+	}
+
+	seelog.Debugf("PCU: %v", s.pcu)
+
+	dateTime := now.UTC().Format(DATE_TIME_FORMAT)
+	totalData := map[string]interface{}{
+		"date_time": dateTime,
+		"total": s.userNum,
+		"pcu": s.pcu,
+		"area": s.areaSet,
+	}
+
+	sUserNum := strconv.Itoa(s.userNum)
+
+	oRedis.Set(REDIS_ONLINE_USER_KEY, s.userNum, 0)
+	oRedis.Set(REDIS_ONLINE_USER_AREA_KEY, s.json_encode(totalData), 0)
+	oRedis.HSet(REDIS_CCU_KEY, dateTime, sUserNum)
+
+	s.push(LOG_TYPE_ONLINE_USER, sUserNum)
+	s.push(LOG_TYPE_ONLINE_USER_AREA, totalData)
 }
 
 func (s *UserSet)push(category string, data interface{}) {

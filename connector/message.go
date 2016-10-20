@@ -70,7 +70,7 @@ func (m *OnlineUserMessage) Process(msg *Msg) {
 		ip := net.ParseIP(userLog.Ip)
 		city, err := GetGeoIp().City(ip)
 		if err != nil {
-			seelog.Error("geoip error: ", err.Error())
+			seelog.Errorf("geoip error: %v ,", userLog.Ip, err.Error())
 		} else if city.Country.IsoCode != "" {
 			isoCode = city.Country.IsoCode
 			countryName = city.Country.Names["en"]

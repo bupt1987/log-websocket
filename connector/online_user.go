@@ -5,6 +5,7 @@ import (
 	"time"
 	"encoding/json"
 	"strconv"
+	"gopkg.in/redis.v5"
 )
 
 type area struct {
@@ -54,9 +55,12 @@ var today = time.Now().UTC().Format(DATE_FORMAT)
 var oRedis = GetRedis()
 
 func NewUserSet(hub *Hub) *UserSet {
-	_pcu := oRedis.HGet(REDIS_PCU_KEY, today).String()
 	pcu := 0
-	if (_pcu != "") {
+	_pcu, err := oRedis.HGet(REDIS_PCU_KEY, today).Result()
+
+	if err != nil {
+		seelog.Error(err.Error())
+	} else if err != redis.Nil {
 		pcu, _ = strconv.Atoi(_pcu)
 	}
 

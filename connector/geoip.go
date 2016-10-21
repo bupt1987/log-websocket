@@ -174,6 +174,9 @@ func (g *GeoIp)Updata() {
 
 			if err := os.Rename(sTmp, g.sDataFile); err != nil {
 				seelog.Errorf("Move new data file error: %v", err.Error())
+				if err := os.Rename(sBakFile, g.sDataFile); err != nil {
+					seelog.Errorf("Recover old data file error: %v", err.Error())
+				}
 				return
 			}
 
@@ -182,7 +185,6 @@ func (g *GeoIp)Updata() {
 				seelog.Errorf("Load new data file error: ", err.Error())
 				if err := os.Rename(sBakFile, g.sDataFile); err != nil {
 					seelog.Errorf("Recover old data file error: %v", err.Error())
-					return
 				}
 				return
 			}

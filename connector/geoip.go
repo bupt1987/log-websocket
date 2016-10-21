@@ -168,12 +168,12 @@ func (g *GeoIp)Updata() {
 
 			sBakFile := g.sDataFile + "_bak"
 			if err := os.Rename(g.sDataFile, sBakFile); err != nil {
-				seelog.Errorf("Move old data file to bak error: ", err.Error())
+				seelog.Errorf("Move old data file to bak error: %v", err.Error())
 				return
 			}
 
 			if err := os.Rename(sTmp, g.sDataFile); err != nil {
-				seelog.Errorf("Move new data file error: ", err.Error())
+				seelog.Errorf("Move new data file error: %v", err.Error())
 				return
 			}
 
@@ -181,7 +181,7 @@ func (g *GeoIp)Updata() {
 			if err != nil {
 				seelog.Errorf("Load new data file error: ", err.Error())
 				if err := os.Rename(sBakFile, g.sDataFile); err != nil {
-					seelog.Errorf("Recover old data file error: ", err.Error())
+					seelog.Errorf("Recover old data file error: %v", err.Error())
 					return
 				}
 				return
@@ -189,7 +189,7 @@ func (g *GeoIp)Updata() {
 
 			//移动md5文件
 			if err := ioutil.WriteFile(g.sMd5File, []byte(sNewMd5), 0644); err != nil {
-				seelog.Errorf("Write new md5 error: ", err);
+				seelog.Errorf("Write new md5 error: %v", err);
 			}
 			defer os.Remove(sBakFile)
 

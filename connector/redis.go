@@ -2,15 +2,20 @@ package connector
 
 import (
 	"gopkg.in/redis.v5"
+	"github.com/cihub/seelog"
 )
 
-var client *redis.Client
+var oRedisClient *redis.Client
 
 func GetRedis() *redis.Client {
-	if client == nil {
-		client = redis.NewClient(&redis.Options{
-			Addr: "localhost:6379",
+	if oRedisClient == nil {
+		oRedisClient = redis.NewClient(&redis.Options{
+			Addr: "127.0.0.1:6379",
 		})
+		_, err := oRedisClient.Ping().Result()
+		if (err != nil) {
+			seelog.Error("Init Redis Error")
+		}
 	}
-	return client
+	return oRedisClient
 }

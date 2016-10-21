@@ -69,6 +69,13 @@ func (l *Socket) Listen() {
 	}
 }
 
+func (l *Socket) Stop() {
+	if err := os.Remove(l.socket); err != nil {
+		seelog.Errorf("delete socket file error: %v", err.Error())
+	}
+	seelog.Info("Push stoped")
+}
+
 func NewSocket(socket string, workers map[string]MessageWorker) *Socket {
 	chConn := make(chan net.Conn, runtime.NumCPU())
 	return &Socket{

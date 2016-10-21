@@ -27,7 +27,9 @@ func NewHub() *Hub {
 
 func (h *Hub) push(client *Client, msg []byte) {
 	defer func() {
-		recover()
+		if err := recover(); err != nil {
+			seelog.Error("Hub.push error: ", err);
+		}
 	}()
 	client.send <- msg
 }

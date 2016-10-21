@@ -2,8 +2,6 @@ package connector
 
 import (
 	"bytes"
-	"encoding/json"
-	"net"
 	"github.com/cihub/seelog"
 )
 
@@ -54,35 +52,4 @@ func ProcessMsg(worker MessageWorker, msg *Msg) {
 		}
 	}()
 	worker.P.Process(msg)
-}
-
-type OnlineUserMessage struct {
-	UserSet *UserSet
-}
-
-func (m *OnlineUserMessage) Process(msg *Msg) {
-	var isoCode = ""
-	var countryName = ""
-	userLog := UserLog{}
-	json.Unmarshal(msg.Data, &userLog)
-
-	if userLog.Ip != "" && userLog.Ip != "unknown" {
-		ip := net.ParseIP(userLog.Ip)
-		city, err := GetGeoIp().City(ip)
-		if err != nil {
-			seelog.Errorf("geoip '%v' error: %v", userLog.Ip, err.Error())
-		} else if city.Country.IsoCode != "" {
-			isoCode = city.Country.IsoCode
-			countryName = city.Country.Names["en"]
-		}
-	}
-
-	m.UserSet.NewUser(&User{
-		Uid: userLog.Uid,
-		Ip: userLog.Ip,
-		IsoCode: isoCode,
-		CountryName: countryName,
-		StartTime: userLog.Start_Time,
-		EndTime: userLog.End_Time,
-	})
 }

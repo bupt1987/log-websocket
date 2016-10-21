@@ -12,18 +12,12 @@ import (
 	"time"
 )
 
-func main() {
-	addr := flag.String("addr", ":9090", "http service address")
-	socket := flag.String("socket", "/tmp/log-stock.socket", "Listen socket address")
-	geoipdata := flag.String("geoipdata", "./GeoLite2-City.mmdb", "GeoIp data file path")
-	level := flag.String("level", "debug", "Logger level")
+var addr = flag.String("addr", ":9090", "http service address")
+var socket = flag.String("socket", "/tmp/log-stock.socket", "Listen socket address")
+var geoipdata = flag.String("geoipdata", "./GeoLite2-City.mmdb", "GeoIp data file path")
+var level = flag.String("level", "debug", "Logger level")
 
-	flag.Usage = func() {
-		fmt.Fprintf(os.Stderr, "Usage: %s [OPTIONS]\n", os.Args[0])
-		flag.PrintDefaults()
-	}
-	flag.Parse()
-
+func init() {
 	//init logger
 	newLogger, err := seelog.LoggerFromConfigAsString(
 		"<seelog minlevel=\"" + *level + "\">" +
@@ -38,25 +32,26 @@ func main() {
 		panic(err)
 	}
 	seelog.ReplaceLogger(newLogger);
+}
+
+func main() {
 	defer seelog.Flush()
 
-	defer func() {
-		if err := os.Remove(*socket); err != nil {
-			seelog.Errorf("delete socket file error: %v", err.Error())
-		}
-		seelog.Info("Server stoped")
-	}()
+	flag.Usage = func() {
+		fmt.Fprintf(os.Stderr, "Usage: %s [OPTIONS]\n", os.Args[0])
+		flag.PrintDefaults()
+	}
+	flag.Parse()
 
 	//init geoip
-	connector.InitGeoip(*geoipdata)
-	defer connector.GetGeoIp().Close()
+	geoip := connector.InitGeoip(*geoipdata)
+	defer geoip.Close()
 
 	hub := connector.NewHub()
 	go hub.Run()
 
 	userSet := connector.NewUserSet("dw_online_user", hub)
 	go userSet.Run()
-	defer userSet.Dump()
 
 	msgWorkers := map[string]connector.MessageWorker{
 		connector.LOG_TYPE_ONLINE_USER: {P: &connector.OnlineUserMessage{UserSet: userSet}},
@@ -64,7 +59,9 @@ func main() {
 	}
 
 	//local socket
-	go connector.NewSocket(*socket, msgWorkers).Listen()
+	oLocalSocket := connector.NewSocket(*socket, msgWorkers)
+	go oLocalSocket.Listen()
+	defer oLocalSocket.Stop()
 
 	// websocket listen
 	go func() {
@@ -81,6 +78,9 @@ func main() {
 	signal.Notify(chSig, os.Interrupt)
 	signal.Notify(chSig, os.Kill)
 	signal.Notify(chSig, syscall.SIGTERM)
+
+	//dump
+	defer userSet.Dump()
 
 	for {
 		select {

@@ -49,7 +49,7 @@ const (
 	REDIS_ONLINE_USER_AREA_KEY = "dwlog_online_user_area"
 	REDIS_CCU_KEY = "dwlog_ccu"
 	REDIS_PCU_KEY = "dwlog_pcu" //当日最高在线人数
-	MAX_CHECK_TIME = 360 //test 60, prod 360
+	MAX_CHECK_TIME = 420 //test 60, prod 420
 	DATE_TIME_FORMAT = "200601021504"
 	DATE_FORMAT = "20060102"
 )

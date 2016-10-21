@@ -12,37 +12,34 @@ import (
 	"time"
 )
 
-var addr = flag.String("addr", ":9090", "http service address")
-var socket = flag.String("socket", "/tmp/log-stock.socket", "Listen socket address")
-var geoipdata = flag.String("geoip", "./GeoLite2-City.mmdb", "GeoIp data file path")
-var geoipdatamd5 = flag.String("md5", "./GeoLite2-City.md5", "GeoIp data md5 file path")
-var level = flag.String("level", "debug", "Logger level")
-
-func init() {
-	//init logger
-	newLogger, err := seelog.LoggerFromConfigAsString(
-		"<seelog minlevel=\"" + *level + "\">" +
-			"<outputs formatid=\"main\">" +
-			"<console />" +
-			"</outputs>" +
-			"<formats>" +
-			"<format id=\"main\" format=\"[%Date %Time][%Level] %File : %Msg%n\"/>" +
-			"</formats>" +
-			"</seelog>")
-	if err != nil {
-		panic(err)
-	}
-	seelog.ReplaceLogger(newLogger);
-}
-
 func main() {
-	defer seelog.Flush()
+	addr := flag.String("addr", ":9090", "http service address")
+	socket := flag.String("socket", "/tmp/log-stock.socket", "Listen socket address")
+	geoipdata := flag.String("geoip", "./GeoLite2-City.mmdb", "GeoIp data file path")
+	geoipdatamd5 := flag.String("md5", "./GeoLite2-City.md5", "GeoIp data md5 file path")
+	level := flag.String("level", "debug", "Logger level")
 
 	flag.Usage = func() {
 		fmt.Fprintf(os.Stderr, "Usage: %s [OPTIONS]\n", os.Args[0])
 		flag.PrintDefaults()
 	}
 	flag.Parse()
+
+	//init logger
+	newLogger, err := seelog.LoggerFromConfigAsString(
+		"<seelog minlevel=\"" + *level + "\">" +
+			"<outputs formatid=\"main\">" +
+				"<console />" +
+			"</outputs>" +
+			"<formats>" +
+				"<format id=\"main\" format=\"[%Date %Time][%Level] : %Msg%n\"/>" +
+			"</formats>" +
+		"</seelog>")
+	if err != nil {
+		panic(err)
+	}
+	seelog.ReplaceLogger(newLogger);
+	defer seelog.Flush()
 
 	//init geoip
 	geoip := connector.InitGeoip(*geoipdata, *geoipdatamd5)

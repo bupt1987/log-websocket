@@ -51,7 +51,6 @@ const (
 	REDIS_PCU_KEY = "dwlog_pcu" //当日最高在线人数
 	MAX_CHECK_TIME = 360 //test 60, prod 360
 	DATE_TIME_FORMAT = "200601021504"
-	TIME_FORMAT = "2006-01-02 15:04:05"
 	DATE_FORMAT = "20060102"
 )
 
@@ -86,7 +85,7 @@ func NewUserSet(id string, hub *Hub) *UserSet {
 	}
 	oUserSet.loadDump()
 
-	seelog.Debugf("PCU: %v, CCU: %v", pcu, oUserSet.iUserNum)
+	seelog.Infof("pcu: %v, ccu: %v", pcu, oUserSet.iUserNum)
 
 	return oUserSet
 }
@@ -113,13 +112,12 @@ func (s *UserSet)Run() {
 						s.mArea[user.Iso].UserNum ++
 					}
 				}
-
-				seelog.Debugf("New Online User %v %v %v %v",
-					user.Id,
-					user.Iso,
-					user.CName,
-					time.Unix(int64(user.ETime), 0).Format(TIME_FORMAT),
-				)
+				//seelog.Debugf("New Online User %v %v %v %v",
+				//	user.Id,
+				//	user.Iso,
+				//	user.CName,
+				//	time.Unix(int64(user.ETime), 0).Format("2006-01-02 15:04:05"),
+				//)
 			} else {
 				if s.mUser[user.Id].ETime < user.ETime {
 					s.mUser[user.Id].ETime = user.ETime
@@ -178,6 +176,7 @@ func (s *UserSet)Run() {
 }
 
 func (s *UserSet)Dump() {
+	seelog.Info("Start to dump data")
 	aUserData := make(map[string]*User)
 	for uid, user := range s.mUser {
 		aUserData[strconv.Itoa(uid)] = user
@@ -187,7 +186,7 @@ func (s *UserSet)Dump() {
 	if err != nil {
 		seelog.Error(err);
 	} else {
-		seelog.Debugf("dump %v", s.mDumpFile["user"])
+		seelog.Infof("dump %v", s.mDumpFile["user"])
 	}
 
 	aAreaData := make(map[string]*area)
@@ -199,7 +198,7 @@ func (s *UserSet)Dump() {
 	if err != nil {
 		seelog.Error(err);
 	} else {
-		seelog.Debugf("dump %v", s.mDumpFile["area"])
+		seelog.Infof("dump %v", s.mDumpFile["area"])
 	}
 }
 
@@ -243,7 +242,7 @@ func (s *UserSet)loadDump() {
 				}
 			}
 			s.iUserNum = iUserNum
-			seelog.Debugf("%v load finished", file)
+			seelog.Infof("%v load finished", file)
 			break
 		case "area":
 			data := make(map[string]area)
@@ -261,7 +260,7 @@ func (s *UserSet)loadDump() {
 					UserNum: v.UserNum,
 				}
 			}
-			seelog.Debugf("%v load finished", file)
+			seelog.Infof("%v load finished", file)
 			break
 		default:
 			continue
@@ -272,7 +271,7 @@ func (s *UserSet)loadDump() {
 		}
 	}
 
-	seelog.Debugf("Load dump cost: %vms", time.Now().UnixNano() / int64(time.Millisecond) - iStartTime)
+	seelog.Infof("Load dump cost: %vms", time.Now().UnixNano() / int64(time.Millisecond) - iStartTime)
 }
 
 func (s *UserSet)push(category string, data interface{}) {

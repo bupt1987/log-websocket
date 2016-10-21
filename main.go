@@ -14,7 +14,8 @@ import (
 
 var addr = flag.String("addr", ":9090", "http service address")
 var socket = flag.String("socket", "/tmp/log-stock.socket", "Listen socket address")
-var geoipdata = flag.String("geoipdata", "./GeoLite2-City.mmdb", "GeoIp data file path")
+var geoipdata = flag.String("geoip", "./GeoLite2-City.mmdb", "GeoIp data file path")
+var geoipdatamd5 = flag.String("md5", "./GeoLite2-City.md5", "GeoIp data md5 file path")
 var level = flag.String("level", "debug", "Logger level")
 
 func init() {
@@ -25,7 +26,7 @@ func init() {
 			"<console />" +
 			"</outputs>" +
 			"<formats>" +
-			"<format id=\"main\" format=\"[%Date %Time][%Level] %Msg%n\"/>" +
+			"<format id=\"main\" format=\"[%Date %Time][%Level] %File : %Msg%n\"/>" +
 			"</formats>" +
 			"</seelog>")
 	if err != nil {
@@ -44,7 +45,7 @@ func main() {
 	flag.Parse()
 
 	//init geoip
-	geoip := connector.InitGeoip(*geoipdata)
+	geoip := connector.InitGeoip(*geoipdata, *geoipdatamd5)
 	defer geoip.Close()
 
 	hub := connector.NewHub()

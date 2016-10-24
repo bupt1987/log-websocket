@@ -73,7 +73,7 @@ func (g *GeoIp)Close() {
 }
 
 func (g *GeoIp)Updata() {
-	iAfter := 60
+	iAfter := 3600
 	seelog.Debugf("Check the update of geoip will run after %vs", iAfter)
 	time.AfterFunc(time.Duration(iAfter) * time.Second, func() {
 		defer g.Updata()

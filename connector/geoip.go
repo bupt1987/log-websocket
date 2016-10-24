@@ -14,6 +14,7 @@ import (
 	"encoding/hex"
 	"time"
 	"strings"
+	"flag"
 )
 
 type GeoIp struct {
@@ -30,6 +31,12 @@ const (
 )
 
 var geoip *GeoIp
+
+var isDev = flag.Bool("dev", true, "Is dev model")
+
+func IsDev() bool {
+	return *isDev
+}
 
 func InitGeoip(geoipdata string, sMd5File string) *GeoIp {
 	if geoip != nil {
@@ -73,7 +80,12 @@ func (g *GeoIp)Close() {
 }
 
 func (g *GeoIp)Updata() {
-	iAfter := 3600
+	var iAfter int;
+	if (IsDev()) {
+		iAfter = 60
+	} else {
+		iAfter = 3600
+	}
 	seelog.Debugf("Check the update of geoip will run after %vs", iAfter)
 	time.AfterFunc(time.Duration(iAfter) * time.Second, func() {
 		defer g.Updata()

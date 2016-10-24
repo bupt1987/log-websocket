@@ -73,7 +73,7 @@ func (g *GeoIp)Close() {
 }
 
 func (g *GeoIp)Updata() {
-	iAfter := 3600
+	iAfter := 60
 	seelog.Debugf("Check the update of geoip will run after %vs", iAfter)
 	time.AfterFunc(time.Duration(iAfter) * time.Second, func() {
 		defer g.Updata()
@@ -107,7 +107,9 @@ func (g *GeoIp)Updata() {
 				return
 			}
 
-			sGzTmp := "/tmp/GeoLite2-City.mmdb.gz"
+			root, _ := os.Getwd()
+
+			sGzTmp := root + "/GeoLite2-City.mmdb.gz"
 			gf, err := os.Create(sGzTmp)
 			defer gf.Close()
 			if err != nil {
@@ -134,7 +136,7 @@ func (g *GeoIp)Updata() {
 				return
 			}
 
-			sTmp := "/tmp/GeoLite2-City.mmdb"
+			sTmp := root + "/GeoLite2-City.mmdb.up"
 			f, err := os.Create(sTmp)
 			defer f.Close()
 			if err != nil {
@@ -143,7 +145,7 @@ func (g *GeoIp)Updata() {
 			}
 
 			io.Copy(f, gzr)
-			seelog.Debug("Ungz new geoip data finished")
+			seelog.Debug("Decompression new geoip data finished")
 
 			// data read
 			fr, err := os.Open(sTmp)
@@ -166,7 +168,7 @@ func (g *GeoIp)Updata() {
 				return
 			}
 
-			sBakFile := g.sDataFile + "_bak"
+			sBakFile := g.sDataFile + ".bak"
 			if err := os.Rename(g.sDataFile, sBakFile); err != nil {
 				seelog.Errorf("Move old data file to bak error: %v", err.Error())
 				return

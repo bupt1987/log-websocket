@@ -22,7 +22,6 @@ for ($i = 1; $i <= 1000000; $i++) {
     $sFormatStr = makePack($sCategory, $sStr);
     @fwrite($socket, $sFormatStr);
     echo $sFormatStr;
-    //这里为了测试性能特意fclose, 在实际使用中可以不fclose
     usleep(1);
 }
 

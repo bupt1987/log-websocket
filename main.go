@@ -41,6 +41,8 @@ func main() {
 	seelog.ReplaceLogger(newLogger);
 	defer seelog.Flush()
 
+	seelog.Debug("Server begin to start")
+
 	//init geoip
 	geoip := connector.InitGeoip(*geoipdata, *geoipdatamd5)
 	defer geoip.Close()

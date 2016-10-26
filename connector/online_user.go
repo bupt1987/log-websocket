@@ -37,6 +37,7 @@ type UserSet struct {
 	mDumpFile map[string]string
 	oHub      *Hub
 	cTime     chan int
+	cDump     chan *chan int
 	cUser     chan *User
 	mUser     map[int]*User
 	mArea     map[string]*area
@@ -76,10 +77,11 @@ func NewUserSet(id string, hub *Hub) *UserSet {
 		id: id,
 		mDumpFile: dumpFiles,
 		oHub: hub,
-		cTime:  make(chan int, 1),
-		cUser:  make(chan *User, 1024),
-		mUser:   make(map[int]*User),
-		mArea:   make(map[string]*area),
+		cTime: make(chan int, 1),
+		cDump: make(chan *chan int, 1),
+		cUser: make(chan *User, 1024),
+		mUser: make(map[int]*User),
+		mArea: make(map[string]*area),
 		iUserNum: 0,
 		iPcu: pcu,
 	}
@@ -91,115 +93,127 @@ func NewUserSet(id string, hub *Hub) *UserSet {
 }
 
 func (s *UserSet)Run() {
-	after := 59 - time.Now().Second()
-	s.timeAfter(after)
-	oRedis := GetRedis()
-	for {
-		select {
-		case user := <-s.cUser:
-			if _, ok := s.mUser[user.Id]; !ok {
-				s.iUserNum ++
-				s.mUser[user.Id] = user
+	go func() {
+		defer PanicHandler()
 
-				if user.Iso != "" {
-					if _, ok := s.mArea[user.Iso]; !ok {
-						s.mArea[user.Iso] = &area{
-							IsoCode: user.Iso,
-							Name: user.CName,
-							UserNum: 1,
+		after := 59 - time.Now().Second()
+		s.timeAfter(after)
+		oRedis := GetRedis()
+		for {
+			select {
+			case user := <-s.cUser:
+				if _, ok := s.mUser[user.Id]; !ok {
+					s.iUserNum ++
+					s.mUser[user.Id] = user
+
+					if user.Iso != "" {
+						if _, ok := s.mArea[user.Iso]; !ok {
+							s.mArea[user.Iso] = &area{
+								IsoCode: user.Iso,
+								Name: user.CName,
+								UserNum: 1,
+							}
+						} else {
+							s.mArea[user.Iso].UserNum ++
 						}
-					} else {
-						s.mArea[user.Iso].UserNum ++
+					}
+					//seelog.Debugf("New Online User %v %v %v %v",
+					//	user.Id,
+					//	user.Iso,
+					//	user.CName,
+					//	time.Unix(int64(user.ETime), 0).Format("2006-01-02 15:04:05"),
+					//)
+				} else {
+					if s.mUser[user.Id].ETime < user.ETime {
+						s.mUser[user.Id].ETime = user.ETime
 					}
 				}
-				//seelog.Debugf("New Online User %v %v %v %v",
-				//	user.Id,
-				//	user.Iso,
-				//	user.CName,
-				//	time.Unix(int64(user.ETime), 0).Format("2006-01-02 15:04:05"),
-				//)
-			} else {
-				if s.mUser[user.Id].ETime < user.ETime {
-					s.mUser[user.Id].ETime = user.ETime
+
+			case <-s.cTime:
+				seelog.Debug("======================  Start check online user  ======================")
+
+				now := time.Now()
+				_today := now.UTC().Format(DATE_FORMAT)
+				iDiffTime := MAX_CHECK_TIME
+				if IsDev() {
+					iDiffTime = 60
 				}
-			}
-		case <-s.cTime:
-			seelog.Debug("======================  Start check online user  ======================")
+				checkTime := int(now.Unix() - int64(iDiffTime))
+				iOffLine := 0
 
-			now := time.Now()
-			_today := now.UTC().Format(DATE_FORMAT)
-			var checkTime = int(now.Unix() - MAX_CHECK_TIME)
-			iOffLine := 0
-
-			for uid, user := range s.mUser {
-				if (user.ETime < checkTime) {
-					s.iUserNum --
-					iOffLine ++
-					delete(s.mUser, uid)
-					if _, ok := s.mArea[user.Iso]; ok {
-						s.mArea[user.Iso].UserNum --
+				for uid, user := range s.mUser {
+					if (user.ETime < checkTime) {
+						s.iUserNum --
+						iOffLine ++
+						delete(s.mUser, uid)
+						if _, ok := s.mArea[user.Iso]; ok {
+							s.mArea[user.Iso].UserNum --
+						}
 					}
 				}
+
+				bDiffDay := _today != today
+				if (s.iUserNum > s.iPcu || bDiffDay) {
+					s.iPcu = s.iUserNum
+					oRedis.HSet(REDIS_PCU_KEY, _today, strconv.Itoa(s.iPcu))
+				}
+				if (bDiffDay) {
+					today = _today
+				}
+
+				seelog.Debugf("Offline user: %v, current online user: %v, Pcu: %v", iOffLine, s.iUserNum, s.iPcu)
+
+				dateTime := now.UTC().Format(DATE_TIME_FORMAT)
+				totalData := map[string]interface{}{
+					"date_time": dateTime,
+					"total": s.iUserNum,
+					"pcu": s.iPcu,
+					"area": s.mArea,
+				}
+
+				sUserNum := strconv.Itoa(s.iUserNum)
+
+				oRedis.Set(REDIS_ONLINE_USER_KEY, s.iUserNum, 0)
+				oRedis.Set(REDIS_ONLINE_USER_AREA_KEY, s.json_encode(totalData), 0)
+				oRedis.HSet(REDIS_CCU_KEY, dateTime, sUserNum)
+
+				s.push(LOG_TYPE_ONLINE_USER, sUserNum)
+				s.push(LOG_TYPE_ONLINE_USER_AREA, totalData)
+
+				seelog.Debug("=================================  End  ===============================")
+
+			case cDumpEnd := <-s.cDump:
+				seelog.Info("Start to dump data")
+				aUserData := make(map[string]*User)
+				for uid, user := range s.mUser {
+					aUserData[strconv.Itoa(uid)] = user
+				}
+
+				err := ioutil.WriteFile(s.mDumpFile["user"], s.json_encode(aUserData), 0644)
+				if err != nil {
+					seelog.Error(err);
+				} else {
+					seelog.Infof("dump %v", s.mDumpFile["user"])
+				}
+
+				err = ioutil.WriteFile(s.mDumpFile["area"], s.json_encode(s.mArea), 0644)
+				if err != nil {
+					seelog.Error(err);
+				} else {
+					seelog.Infof("dump %v", s.mDumpFile["area"])
+				}
+				*cDumpEnd <- 1
+				seelog.Info("Dump data finished")
+				break
 			}
-
-			bDiffDay := _today != today
-			if (s.iUserNum > s.iPcu || bDiffDay) {
-				s.iPcu = s.iUserNum
-				oRedis.HSet(REDIS_PCU_KEY, _today, strconv.Itoa(s.iPcu))
-			}
-			if (bDiffDay) {
-				today = _today
-			}
-
-			seelog.Debugf("Offline user: %v, current online user: %v, Pcu: %v", iOffLine, s.iUserNum, s.iPcu)
-
-			dateTime := now.UTC().Format(DATE_TIME_FORMAT)
-			totalData := map[string]interface{}{
-				"date_time": dateTime,
-				"total": s.iUserNum,
-				"pcu": s.iPcu,
-				"area": s.mArea,
-			}
-
-			sUserNum := strconv.Itoa(s.iUserNum)
-
-			oRedis.Set(REDIS_ONLINE_USER_KEY, s.iUserNum, 0)
-			oRedis.Set(REDIS_ONLINE_USER_AREA_KEY, s.json_encode(totalData), 0)
-			oRedis.HSet(REDIS_CCU_KEY, dateTime, sUserNum)
-
-			s.push(LOG_TYPE_ONLINE_USER, sUserNum)
-			s.push(LOG_TYPE_ONLINE_USER_AREA, totalData)
-
-			seelog.Debug("=================================  End  ===============================")
 		}
-	}
+	}()
 }
 
 func (s *UserSet)Dump() {
-	seelog.Info("Start to dump data")
-	aUserData := make(map[string]*User)
-	for uid, user := range s.mUser {
-		aUserData[strconv.Itoa(uid)] = user
-	}
-
-	err := ioutil.WriteFile(s.mDumpFile["user"], s.json_encode(aUserData), 0644)
-	if err != nil {
-		seelog.Error(err);
-	} else {
-		seelog.Infof("dump %v", s.mDumpFile["user"])
-	}
-
-	aAreaData := make(map[string]*area)
-	for iso, area := range s.mArea {
-		aAreaData[iso] = area
-	}
-
-	err = ioutil.WriteFile(s.mDumpFile["area"], s.json_encode(aAreaData), 0644)
-	if err != nil {
-		seelog.Error(err);
-	} else {
-		seelog.Infof("dump %v", s.mDumpFile["area"])
-	}
+	cDumpEnd := make(chan int, 1)
+	s.cDump <- &cDumpEnd
+	<- cDumpEnd
 }
 
 func (s *UserSet)loadDump() {
@@ -260,7 +274,7 @@ func (s *UserSet)loadDump() {
 					UserNum: v.UserNum,
 				}
 			}
-			seelog.Infof("%v load finished", file)
+			seelog.Infof("%v load finished, Area user: %v", file, iUserNum)
 			break
 		default:
 			continue

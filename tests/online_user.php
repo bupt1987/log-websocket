@@ -12,12 +12,12 @@ if (!$socket) {
     exit();
 }
 
-for ($i = 1; $i <= 1000000; $i++) {
+for ($i = 1; $i <= 10000; $i++) {
     $sStr = json_encode([
         'uid' => $i,
         'ip' => '54.85.200.215', //54.85.200.215, 219.141.227.166
-        'start_time' => time() + $i * 10,
-        'end_time' => time() + $i * 10,
+        'start_time' => time() + $i,
+        'end_time' => time() + $i,
     ]);
     $sFormatStr = makePack($sCategory, $sStr);
     @fwrite($socket, $sFormatStr);

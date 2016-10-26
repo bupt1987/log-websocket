@@ -18,6 +18,9 @@ func main() {
 	geoipdata := flag.String("geoip", "./GeoLite2-City.mmdb", "GeoIp data file path")
 	geoipdatamd5 := flag.String("md5", "./GeoLite2-City.md5", "GeoIp data md5 file path")
 	level := flag.String("level", "debug", "Logger level")
+	sInfoFile := flag.String("info", "./info.log", "Info log file")
+	sErrorFile := flag.String("error", "./error.log", "Error log file")
+	sPanicFile := flag.String("panic", "./panic.dump", "Panic log file")
 
 	flag.Usage = func() {
 		fmt.Fprintf(os.Stderr, "Usage: %s [OPTIONS]\n", os.Args[0])
@@ -30,9 +33,18 @@ func main() {
 		"<seelog minlevel=\"" + *level + "\">" +
 			"<outputs formatid=\"main\">" +
 				"<console />" +
+				"<filter levels=\"info\">" +
+					"<rollingfile type=\"size\" filename=\"" + *sInfoFile + "\" maxsize=\"10485760\" maxrolls=\"2\" />" +
+				"</filter>" +
+				"<filter levels=\"warn,error\">" +
+					"<rollingfile type=\"date\" filename=\"" + *sErrorFile + "\" datepattern=\"2006.01.02\" />" +
+				"</filter>" +
+				"<filter levels=\"critical\">" +
+					"<rollingfile type=\"size\" filename=\"" + *sPanicFile + "\" maxsize=\"10485760\" />" +
+				"</filter>" +
 			"</outputs>" +
 			"<formats>" +
-				"<format id=\"main\" format=\"[%Date %Time][%Level] : %Msg%n\"/>" +
+				"<format id=\"main\" format=\"[%Date %Time][%Level]: %Msg%n\"/>" +
 			"</formats>" +
 		"</seelog>")
 	if err != nil {
@@ -41,30 +53,28 @@ func main() {
 	seelog.ReplaceLogger(newLogger);
 	defer seelog.Flush()
 
+	defer connector.PanicHandler()
+
 	seelog.Debug("Server begin to start")
 
 	//init geoip
 	geoip := connector.InitGeoip(*geoipdata, *geoipdatamd5)
 	defer geoip.Close()
 
+	// close redis connect
+	defer connector.GetRedis().Close()
+
+	//websocket 连接的客户端集合
 	hub := connector.NewHub()
-	go hub.Run()
-
-	userSet := connector.NewUserSet("dw_online_user", hub)
-	go userSet.Run()
-
-	msgWorkers := map[string]connector.MessageWorker{
-		connector.LOG_TYPE_ONLINE_USER: {P: &connector.OnlineUserMessage{UserSet: userSet}},
-		connector.LOG_TYPE_NORMAL: {P: &connector.BaseMessage{Hub:hub}},
-	}
+	hub.Run()
 
 	//local socket
-	oLocalSocket := connector.NewSocket(*socket, msgWorkers)
-	go oLocalSocket.Listen()
+	oLocalSocket := connector.NewSocket(*socket)
 	defer oLocalSocket.Stop()
 
 	// websocket listen
 	go func() {
+		defer connector.PanicHandler()
 		http.HandleFunc("/", func(w http.ResponseWriter, r *http.Request) {
 			connector.ServeWs(hub, w, r)
 		})
@@ -74,13 +84,22 @@ func main() {
 		}
 	}()
 
+	// 在线用户
+	userSet := connector.NewUserSet("dw_online_user", hub)
+	defer userSet.Dump()
+	userSet.Run()
+
+	//开始处理socket数据
+	msgWorkers := map[string]connector.MessageWorker{
+		connector.LOG_TYPE_ONLINE_USER: {P: &connector.OnlineUserMessage{UserSet: userSet}},
+		connector.LOG_TYPE_NORMAL: {P: &connector.BaseMessage{Hub:hub}},
+	}
+	oLocalSocket.Listen(msgWorkers)
+
 	chSig := make(chan os.Signal)
 	signal.Notify(chSig, os.Interrupt)
 	signal.Notify(chSig, os.Kill)
 	signal.Notify(chSig, syscall.SIGTERM)
-
-	//dump
-	defer userSet.Dump()
 
 	for {
 		select {

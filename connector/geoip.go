@@ -14,7 +14,6 @@ import (
 	"encoding/hex"
 	"time"
 	"strings"
-	"flag"
 )
 
 type GeoIp struct {
@@ -31,12 +30,6 @@ const (
 )
 
 var geoip *GeoIp
-
-var isDev = flag.Bool("dev", true, "Is dev model")
-
-func IsDev() bool {
-	return *isDev
-}
 
 func InitGeoip(geoipdata string, sMd5File string) *GeoIp {
 	if geoip != nil {
@@ -106,7 +99,7 @@ func (g *GeoIp)Updata() {
 			return
 		}
 		sNewMd5 := string(_md5)
-		seelog.Debugf("The new md5: %v, old md5: %v", sNewMd5, g.md5)
+		seelog.Debugf("The new md5: %v, old md5: %v, match: %v", sNewMd5, g.md5, sNewMd5 == g.md5)
 
 		if sNewMd5 != g.md5 {
 			seelog.Debug("Start download new geoip data")

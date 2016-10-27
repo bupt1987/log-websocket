@@ -3,6 +3,7 @@ package connector
 import (
 	"runtime"
 	"github.com/cihub/seelog"
+	"github.com/bupt1987/log-websocket/util"
 )
 
 type Hub struct {
@@ -36,7 +37,7 @@ func (h *Hub) push(client *Client, msg []byte) {
 
 func (h *Hub) Run() {
 	go func() {
-		defer PanicHandler()
+		defer util.PanicExit()
 		for {
 			select {
 			case client := <-h.register:

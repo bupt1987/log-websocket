@@ -1,4 +1,4 @@
-package connector
+package util
 
 import (
 	"gopkg.in/redis.v5"

@@ -1,4 +1,4 @@
-package connector
+package util
 
 import (
 	"runtime/debug"
@@ -13,7 +13,7 @@ func IsDev() bool {
 	return *isDev
 }
 
-func PanicHandler() {
+func PanicExit() {
 	if err := recover(); err != nil {
 		seelog.Criticalf("%v\n%s\n======================================================\n", err, debug.Stack())
 		os.Exit(1)

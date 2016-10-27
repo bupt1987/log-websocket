@@ -7,6 +7,7 @@ import (
 	"bufio"
 	"io"
 	"runtime"
+	"github.com/bupt1987/log-websocket/util"
 )
 
 type Socket struct {
@@ -56,7 +57,7 @@ func (l *Socket) Stop() {
 }
 
 func NewSocket(socket string) *Socket {
-	defer PanicHandler()
+	defer util.PanicExit()
 
 	//监听
 	listen, err := net.Listen("unix", socket)

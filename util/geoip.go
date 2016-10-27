@@ -1,4 +1,4 @@
-package connector
+package util
 
 import (
 	"github.com/oschwald/geoip2-golang"

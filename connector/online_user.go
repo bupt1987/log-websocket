@@ -9,6 +9,7 @@ import (
 	"io/ioutil"
 	"os"
 	"net"
+	"github.com/bupt1987/log-websocket/util"
 )
 
 type area struct {
@@ -64,7 +65,7 @@ func NewUserSet(id string, hub *Hub) *UserSet {
 		"area": root + "/dump_" + id + "_area.json",
 	}
 	pcu := 0
-	_pcu, err := GetRedis().HGet(REDIS_PCU_KEY, today).Result()
+	_pcu, err := util.GetRedis().HGet(REDIS_PCU_KEY, today).Result()
 
 	if err == redis.Nil {
 	} else if err != nil {
@@ -94,11 +95,11 @@ func NewUserSet(id string, hub *Hub) *UserSet {
 
 func (s *UserSet)Run() {
 	go func() {
-		defer PanicHandler()
+		defer util.PanicExit()
 
 		after := 59 - time.Now().Second()
 		s.timeAfter(after)
-		oRedis := GetRedis()
+		oRedis := util.GetRedis()
 		for {
 			select {
 			case user := <-s.cUser:
@@ -135,7 +136,7 @@ func (s *UserSet)Run() {
 				now := time.Now()
 				_today := now.UTC().Format(DATE_FORMAT)
 				iDiffTime := MAX_CHECK_TIME
-				if IsDev() {
+				if util.IsDev() {
 					iDiffTime = 60
 				}
 				checkTime := int(now.Unix() - int64(iDiffTime))
@@ -335,7 +336,7 @@ func (m *OnlineUserMessage) Process(msg *Msg) {
 
 	if userLog.Ip != "" && userLog.Ip != "unknown" {
 		ip := net.ParseIP(userLog.Ip)
-		city, err := GetGeoIp().City(ip)
+		city, err := util.GetGeoIp().City(ip)
 		if err != nil {
 			seelog.Errorf("geoip '%v' error: %v", userLog.Ip, err.Error())
 		} else if city.Country.IsoCode != "" {

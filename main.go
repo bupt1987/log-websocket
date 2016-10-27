@@ -7,9 +7,10 @@ import (
 	"fmt"
 	"syscall"
 	"os/signal"
-	"github.com/bupt1987/log-websocket/connector"
-	"github.com/cihub/seelog"
 	"time"
+	"github.com/bupt1987/log-websocket/connector"
+	"github.com/bupt1987/log-websocket/util"
+	"github.com/cihub/seelog"
 )
 
 func main() {
@@ -53,16 +54,16 @@ func main() {
 	seelog.ReplaceLogger(newLogger);
 	defer seelog.Flush()
 
-	defer connector.PanicHandler()
+	defer util.PanicExit()
 
 	seelog.Debug("Server begin to start")
 
 	//init geoip
-	geoip := connector.InitGeoip(*geoipdata, *geoipdatamd5)
+	geoip := util.InitGeoip(*geoipdata, *geoipdatamd5)
 	defer geoip.Close()
 
 	// close redis connect
-	defer connector.GetRedis().Close()
+	defer util.GetRedis().Close()
 
 	//websocket 连接的客户端集合
 	hub := connector.NewHub()
@@ -74,7 +75,7 @@ func main() {
 
 	// websocket listen
 	go func() {
-		defer connector.PanicHandler()
+		defer util.PanicExit()
 		http.HandleFunc("/", func(w http.ResponseWriter, r *http.Request) {
 			connector.ServeWs(hub, w, r)
 		})

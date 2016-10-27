@@ -94,6 +94,7 @@ func main() {
 	msgWorkers := map[string]connector.MessageWorker{
 		connector.LOG_TYPE_ONLINE_USER: {P: &connector.OnlineUserMessage{UserSet: userSet}},
 		connector.LOG_TYPE_NORMAL: {P: &connector.BaseMessage{Hub:hub}},
+		connector.LOG_TYPE_IP_TO_ISO: {P:&connector.IpToIsoMessage{}},
 	}
 	oLocalSocket.Listen(msgWorkers)
 

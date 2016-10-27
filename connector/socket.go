@@ -6,13 +6,12 @@ import (
 	"github.com/cihub/seelog"
 	"bufio"
 	"io"
-	"runtime"
 	"github.com/bupt1987/log-websocket/util"
 )
 
 type Socket struct {
-	chConn  chan net.Conn
-	socket  string
+	chConn chan *net.Conn
+	socket string
 	listen net.Listener
 }
 
@@ -23,19 +22,19 @@ func (l *Socket) Listen(workers map[string]MessageWorker) {
 			select {
 			case conn := <-l.chConn:
 				go func() {
-					defer conn.Close()
-					reader := bufio.NewReader(conn)
+					defer (*conn).Close()
+					reader := bufio.NewReader(*conn)
 					for {
-						data, err := reader.ReadBytes('\n')
+						data, err := reader.ReadBytes(MESSAGE_NEW_LINE_BYTE)
 						if len(data) > 0 {
 							msg := FormatMsg(data)
 							if (msg == nil) {
 								continue
 							}
 							if _, ok := workers[msg.Category]; !ok {
-								ProcessMsg(workers["*"], msg);
+								ProcessMsg(workers["*"], msg, conn);
 							} else {
-								ProcessMsg(workers[msg.Category], msg);
+								ProcessMsg(workers[msg.Category], msg, conn);
 							}
 						}
 						if err != nil {
@@ -70,7 +69,7 @@ func NewSocket(socket string) *Socket {
 	}
 
 	l := &Socket{
-		chConn : make(chan net.Conn, runtime.NumCPU()),
+		chConn : make(chan *net.Conn, 128),
 		socket: socket,
 		listen: listen,
 	}
@@ -82,7 +81,8 @@ func NewSocket(socket string) *Socket {
 				seelog.Error("connection error:", err)
 				continue
 			}
-			l.chConn <- conn
+			l.chConn <- &conn
+			seelog.Debugf("new connect %v", conn.LocalAddr())
 		}
 	}()
 

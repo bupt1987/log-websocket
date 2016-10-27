@@ -328,7 +328,7 @@ type OnlineUserMessage struct {
 	UserSet *UserSet
 }
 
-func (m *OnlineUserMessage) Process(msg *Msg) {
+func (m *OnlineUserMessage) Process(msg *Msg, conn *net.Conn) {
 	var isoCode = ""
 	var countryName = ""
 	userLog := UserLog{}

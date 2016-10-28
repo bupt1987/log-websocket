@@ -214,7 +214,7 @@ func (s *UserSet)Run() {
 func (s *UserSet)Dump() {
 	cDumpEnd := make(chan int, 1)
 	s.cDump <- &cDumpEnd
-	<- cDumpEnd
+	<-cDumpEnd
 }
 
 func (s *UserSet)loadDump() {
@@ -329,16 +329,24 @@ type OnlineUserMessage struct {
 }
 
 func (m *OnlineUserMessage) Process(msg *Msg, conn *net.Conn) {
+	var ip net.IP
 	var isoCode = ""
 	var countryName = ""
 	userLog := UserLog{}
+
 	json.Unmarshal(msg.Data, &userLog)
 
-	if userLog.Ip != "" && userLog.Ip != "unknown" {
-		ip := net.ParseIP(userLog.Ip)
+	if (userLog.Ip != "" && userLog.Ip != "unknown") {
+		ip = net.ParseIP(userLog.Ip)
+		if (ip == nil) {
+			seelog.Errorf("Parse IP error: user => '%v', ip => '%v'", userLog.Uid, userLog.Ip)
+		}
+	}
+
+	if ip != nil {
 		city, err := util.GetGeoIp().City(ip)
 		if err != nil {
-			seelog.Errorf("geoip '%v' error: %v", userLog.Ip, err.Error())
+			seelog.Errorf("Geoip error: user => '%v', ip => '%v', error => %v", userLog.Uid, userLog.Ip, err.Error())
 		} else if city.Country.IsoCode != "" {
 			isoCode = city.Country.IsoCode
 			countryName = city.Country.Names["en"]

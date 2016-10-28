@@ -10,9 +10,11 @@ import (
 )
 
 type Socket struct {
-	chConn chan *net.Conn
-	socket string
-	listen net.Listener
+	chClosed chan int
+	chClose  chan int
+	chConn   chan *net.Conn
+	socket   string
+	listen   net.Listener
 }
 
 func (l *Socket) Listen(workers map[string]MessageWorker) {
@@ -51,7 +53,9 @@ func (l *Socket) Listen(workers map[string]MessageWorker) {
 }
 
 func (l *Socket) Stop() {
+	l.chClose <- 1
 	l.listen.Close()
+	<-l.chClosed
 	seelog.Info("Push stoped")
 }
 
@@ -69,6 +73,8 @@ func NewSocket(socket string) *Socket {
 	}
 
 	l := &Socket{
+		chClosed: make(chan int, 1),
+		chClose: make(chan int, 1),
 		chConn : make(chan *net.Conn, 128),
 		socket: socket,
 		listen: listen,
@@ -78,8 +84,14 @@ func NewSocket(socket string) *Socket {
 		for {
 			conn, err := listen.Accept()
 			if err != nil {
-				seelog.Error("connection error:", err)
-				continue
+				select {
+				case <-l.chClose:
+					l.chClosed <- 1
+					return
+				default:
+					seelog.Errorf("%v connection error: ", err.Error())
+					continue
+				}
 			}
 			l.chConn <- &conn
 			seelog.Debugf("new connect %v", conn.LocalAddr())

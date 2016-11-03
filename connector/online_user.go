@@ -10,6 +10,7 @@ import (
 	"os"
 	"net"
 	"github.com/bupt1987/log-websocket/util"
+	"github.com/bupt1987/log-websocket/analysis"
 )
 
 type area struct {
@@ -142,16 +143,19 @@ func (s *UserSet)Run() {
 				checkTime := int(now.Unix() - int64(iDiffTime))
 				iOffLine := 0
 
+				analysis.LockAddSession()
 				for uid, user := range s.mUser {
 					if (user.ETime < checkTime) {
 						s.iUserNum --
 						iOffLine ++
 						delete(s.mUser, uid)
+						analysis.AddSession(uid, user.STime, user.ETime)
 						if _, ok := s.mArea[user.Iso]; ok {
 							s.mArea[user.Iso].UserNum --
 						}
 					}
 				}
+				analysis.UnLockAddSession()
 
 				bDiffDay := _today != today
 				if (s.iUserNum > s.iPcu || bDiffDay) {
@@ -175,11 +179,13 @@ func (s *UserSet)Run() {
 				sUserNum := strconv.Itoa(s.iUserNum)
 
 				oRedis.Set(REDIS_ONLINE_USER_KEY, s.iUserNum, 0)
-				oRedis.Set(REDIS_ONLINE_USER_AREA_KEY, s.json_encode(totalData), 0)
+				oRedis.Set(REDIS_ONLINE_USER_AREA_KEY, util.JsonEncode(totalData), 0)
 				oRedis.HSet(REDIS_CCU_KEY, dateTime, sUserNum)
 
 				s.push(LOG_TYPE_ONLINE_USER, sUserNum)
 				s.push(LOG_TYPE_ONLINE_USER_AREA, totalData)
+
+				analysis.PushSession()
 
 				seelog.Debug("=================================  End  ===============================")
 
@@ -190,14 +196,14 @@ func (s *UserSet)Run() {
 					aUserData[strconv.Itoa(uid)] = user
 				}
 
-				err := ioutil.WriteFile(s.mDumpFile["user"], s.json_encode(aUserData), 0644)
+				err := ioutil.WriteFile(s.mDumpFile["user"], util.JsonEncode(aUserData), 0644)
 				if err != nil {
 					seelog.Error(err);
 				} else {
 					seelog.Infof("dump %v", s.mDumpFile["user"])
 				}
 
-				err = ioutil.WriteFile(s.mDumpFile["area"], s.json_encode(s.mArea), 0644)
+				err = ioutil.WriteFile(s.mDumpFile["area"], util.JsonEncode(s.mArea), 0644)
 				if err != nil {
 					seelog.Error(err);
 				} else {
@@ -205,7 +211,7 @@ func (s *UserSet)Run() {
 				}
 				cDumpEnd <- 1
 				seelog.Info("Dump data finished")
-				break
+				return
 			}
 		}
 	}()
@@ -290,7 +296,7 @@ func (s *UserSet)loadDump() {
 }
 
 func (s *UserSet)push(category string, data interface{}) {
-	res := s.json_encode(map[string]interface{}{
+	res := util.JsonEncode(map[string]interface{}{
 		"data": data,
 		"category": category,
 	});
@@ -299,14 +305,6 @@ func (s *UserSet)push(category string, data interface{}) {
 		seelog.Debugf("user online push: %v", string(res))
 		s.oHub.Broadcast <- &Msg{Category: category, Data:res}
 	}
-}
-
-func (s *UserSet)json_encode(data interface{}) []byte {
-	res, err := json.Marshal(data)
-	if (err != nil) {
-		seelog.Errorf("json_encode error: %v", err.Error())
-	}
-	return res
 }
 
 func (s *UserSet)NewUser(user *User) {

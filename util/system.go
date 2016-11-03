@@ -5,6 +5,7 @@ import (
 	"flag"
 	"github.com/cihub/seelog"
 	"os"
+	"encoding/json"
 )
 
 var isDev = flag.Bool("dev", true, "Is dev model")
@@ -18,4 +19,12 @@ func PanicExit() {
 		seelog.Criticalf("%v\n%s\n======================================================\n", err, debug.Stack())
 		os.Exit(1)
 	}
+}
+
+func JsonEncode(data interface{}) []byte {
+	res, err := json.Marshal(data)
+	if (err != nil) {
+		seelog.Errorf("json_encode error: %v", err.Error())
+	}
+	return res
 }

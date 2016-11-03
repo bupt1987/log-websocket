@@ -12,6 +12,7 @@ import (
 	"github.com/bupt1987/log-websocket/util"
 	"github.com/cihub/seelog"
 	"runtime"
+	"github.com/bupt1987/log-websocket/analysis"
 )
 
 func main() {
@@ -89,6 +90,7 @@ func main() {
 	// 在线用户
 	userSet := connector.NewUserSet("dw_online_user", hub)
 	defer userSet.Dump()
+	defer analysis.PushSessionImmediately()
 	userSet.Run()
 
 	//开始处理socket数据

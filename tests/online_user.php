@@ -12,13 +12,21 @@ if (!$socket) {
     exit();
 }
 
+$lIp = [
+    '54.85.200.215',
+    '219.141.227.166',
+    '10.0.0.2',
+];
+$iCount = count($lIp);
+
+$iNow = time();
 $fStartTime = microtime(TRUE);
 for ($i = 1; $i <= 10000; $i++) {
     $sStr = json_encode([
         'uid' => $i,
-        'ip' => '54.85.200.215', //54.85.200.215, 219.141.227.166
-        'start_time' => time() + $i,
-        'end_time' => time() + $i,
+        'ip' => $lIp[$i % $iCount],
+        'start_time' => $iNow,
+        'end_time' => $iNow + $i,
     ]);
     $sFormatStr = makePack($sCategory, $sStr);
     @fwrite($socket, $sFormatStr);

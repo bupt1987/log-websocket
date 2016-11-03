@@ -19,7 +19,7 @@ $lIp = [
 ];
 $iCount = count($lIp);
 
-for ($i = 1; $i <= 1000000; $i++) {
+for ($i = 1; $i <= 10000; $i++) {
     $sStr = $lIp[$i % $iCount];
     $sFormatStr = makePack($sCategory, $sStr);
     echo "send => " . $sFormatStr;

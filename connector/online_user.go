@@ -38,7 +38,7 @@ type UserSet struct {
 	mDumpFile map[string]string
 	oHub      *Hub
 	cTime     chan int
-	cDump     chan *chan int
+	cDump     chan chan int
 	cUser     chan *User
 	mUser     map[int]*User
 	mArea     map[string]*area
@@ -79,7 +79,7 @@ func NewUserSet(id string, hub *Hub) *UserSet {
 		mDumpFile: dumpFiles,
 		oHub: hub,
 		cTime: make(chan int, 1),
-		cDump: make(chan *chan int, 1),
+		cDump: make(chan chan int, 1),
 		cUser: make(chan *User, 1024),
 		mUser: make(map[int]*User),
 		mArea: make(map[string]*area),
@@ -203,7 +203,7 @@ func (s *UserSet)Run() {
 				} else {
 					seelog.Infof("dump %v", s.mDumpFile["area"])
 				}
-				*cDumpEnd <- 1
+				cDumpEnd <- 1
 				seelog.Info("Dump data finished")
 				break
 			}
@@ -213,7 +213,7 @@ func (s *UserSet)Run() {
 
 func (s *UserSet)Dump() {
 	cDumpEnd := make(chan int, 1)
-	s.cDump <- &cDumpEnd
+	s.cDump <- cDumpEnd
 	<-cDumpEnd
 }
 
@@ -324,11 +324,11 @@ func (s *UserSet)timeAfter(after int) {
 	})
 }
 
-type OnlineUserMessage struct {
+type OnlineUserMessageProcesser struct {
 	UserSet *UserSet
 }
 
-func (m *OnlineUserMessage) Process(msg *Msg, conn *net.Conn) {
+func (m *OnlineUserMessageProcesser) Process(msg *Msg, conn net.Conn) {
 	var ip net.IP
 	var isoCode = ""
 	var countryName = ""

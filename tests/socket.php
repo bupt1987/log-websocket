@@ -11,7 +11,7 @@ if (!$socket) {
     echo "error: " . $errstr . "\n";
     exit();
 }
-
+$fStartTime = microtime(TRUE);
 for ($i = 0; $i < 10000; $i++) {
     $sStr = json_encode([
         'test' => time(),
@@ -24,7 +24,7 @@ for ($i = 0; $i < 10000; $i++) {
     echo $sStr;
     usleep(1);
 }
-
+echo 'Cost: ' . (microtime(TRUE) - $fStartTime) . "\n";
 fclose($socket);
 
 function makePack($sCategory, $sMsg) {

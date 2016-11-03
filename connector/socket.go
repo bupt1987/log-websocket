@@ -21,33 +21,45 @@ func (l *Socket) Listen(workers map[string]MessageWorker) {
 	go func() {
 		seelog.Info("Push running...")
 		for {
-			select {
-			case conn := <-l.chConn:
-				go func() {
-					defer (*conn).Close()
-					reader := bufio.NewReader(*conn)
-					for {
-						data, err := reader.ReadBytes(MESSAGE_NEW_LINE_BYTE)
-						if len(data) > 0 {
-							msg := FormatMsg(data)
-							if (msg == nil) {
-								continue
-							}
-							if _, ok := workers[msg.Category]; !ok {
-								ProcessMsg(workers["*"], msg, conn);
-							} else {
-								ProcessMsg(workers[msg.Category], msg, conn);
-							}
+			conn, err := l.listen.Accept()
+			if err != nil {
+				select {
+				case <-l.chClose:
+					l.chClosed <- 1
+					return
+				default:
+					seelog.Errorf("%v connection error: ", err.Error())
+					continue
+				}
+			}
+			seelog.Debugf("new connect %v", conn.LocalAddr())
+
+			go func() {
+				defer conn.Close()
+				reader := bufio.NewReader(conn)
+				for {
+					data, err := reader.ReadBytes(MESSAGE_NEW_LINE_BYTE)
+					if len(data) > 0 {
+						msg := FormatMsg(data)
+						if (msg == nil) {
+							continue
 						}
-						if err != nil {
-							if err != io.EOF {
-								seelog.Error("read log error:", err.Error())
-							}
-							break
+						if _, ok := workers[msg.Category]; !ok {
+							ProcessMsg(workers["*"], msg, conn);
+						} else {
+							ProcessMsg(workers[msg.Category], msg, conn);
 						}
 					}
-				}()
-			}
+					if err != nil {
+						if err != io.EOF {
+							seelog.Error("read log error:", err.Error())
+						} else {
+							seelog.Debugf("close connect %v", conn.LocalAddr())
+						}
+						break
+					}
+				}
+			}()
 		}
 	}()
 }
@@ -79,24 +91,6 @@ func NewSocket(socket string) *Socket {
 		socket: socket,
 		listen: listen,
 	}
-
-	go func() {
-		for {
-			conn, err := listen.Accept()
-			if err != nil {
-				select {
-				case <-l.chClose:
-					l.chClosed <- 1
-					return
-				default:
-					seelog.Errorf("%v connection error: ", err.Error())
-					continue
-				}
-			}
-			l.chConn <- &conn
-			seelog.Debugf("new connect %v", conn.LocalAddr())
-		}
-	}()
 
 	return l
 }

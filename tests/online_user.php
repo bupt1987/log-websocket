@@ -12,6 +12,7 @@ if (!$socket) {
     exit();
 }
 
+$fStartTime = microtime(TRUE);
 for ($i = 1; $i <= 10000; $i++) {
     $sStr = json_encode([
         'uid' => $i,
@@ -24,6 +25,7 @@ for ($i = 1; $i <= 10000; $i++) {
     echo $sFormatStr;
     usleep(1);
 }
+echo 'Cost: ' . (microtime(TRUE) - $fStartTime) . "\n";
 
 fclose($socket);
 

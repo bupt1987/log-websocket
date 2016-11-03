@@ -11,6 +11,7 @@ import (
 	"github.com/bupt1987/log-websocket/connector"
 	"github.com/bupt1987/log-websocket/util"
 	"github.com/cihub/seelog"
+	"runtime"
 )
 
 func main() {
@@ -33,21 +34,21 @@ func main() {
 	newLogger, err := seelog.LoggerFromConfigAsString(
 		"<seelog minlevel=\"" + *level + "\">" +
 			"<outputs formatid=\"main\">" +
-				"<console />" +
-				"<filter levels=\"info\">" +
-					"<rollingfile type=\"size\" filename=\"" + *sInfoFile + "\" maxsize=\"10485760\" maxrolls=\"2\" />" +
-				"</filter>" +
-				"<filter levels=\"warn,error\">" +
-					"<rollingfile type=\"date\" filename=\"" + *sErrorFile + "\" datepattern=\"2006.01.02\" />" +
-				"</filter>" +
-				"<filter levels=\"critical\">" +
-					"<rollingfile type=\"size\" filename=\"" + *sPanicFile + "\" maxsize=\"10485760\" />" +
-				"</filter>" +
+			"<console />" +
+			"<filter levels=\"info\">" +
+			"<rollingfile type=\"size\" filename=\"" + *sInfoFile + "\" maxsize=\"10485760\" maxrolls=\"2\" />" +
+			"</filter>" +
+			"<filter levels=\"warn,error\">" +
+			"<rollingfile type=\"date\" filename=\"" + *sErrorFile + "\" datepattern=\"2006.01.02\" />" +
+			"</filter>" +
+			"<filter levels=\"critical\">" +
+			"<rollingfile type=\"size\" filename=\"" + *sPanicFile + "\" maxsize=\"10485760\" />" +
+			"</filter>" +
 			"</outputs>" +
 			"<formats>" +
-				"<format id=\"main\" format=\"[%Date %Time][%Level]: %Msg%n\"/>" +
+			"<format id=\"main\" format=\"[%Date %Time][%Level] %File : %Msg%n\"/>" +
 			"</formats>" +
-		"</seelog>")
+			"</seelog>")
 	if err != nil {
 		panic(err)
 	}
@@ -92,9 +93,9 @@ func main() {
 
 	//开始处理socket数据
 	msgWorkers := map[string]connector.MessageWorker{
-		connector.LOG_TYPE_ONLINE_USER: {P: &connector.OnlineUserMessage{UserSet: userSet}},
-		connector.LOG_TYPE_NORMAL: {P: &connector.BaseMessage{Hub:hub}},
-		connector.LOG_TYPE_IP_TO_ISO: {P:&connector.IpToIsoMessage{}},
+		connector.LOG_TYPE_ONLINE_USER: {P: &connector.OnlineUserMessageProcesser{UserSet: userSet}},
+		connector.LOG_TYPE_NORMAL: {P: &connector.BaseMessageProcesser{Hub:hub}},
+		connector.LOG_TYPE_IP_TO_ISO: {P:&connector.IpToIsoMessageProcesser{}},
 	}
 	oLocalSocket.Listen(msgWorkers)
 
@@ -108,18 +109,20 @@ func main() {
 		case <-chSig:
 			return
 		case <-time.After(60 * time.Second):
-		/**
-		HeapSys：程序向应用程序申请的内存
-		HeapAlloc：堆上目前分配的内存
-		HeapIdle：堆上目前没有使用的内存
-		Alloc : 已经被配并仍在使用的字节数
-		NumGC : GC次数
-		HeapReleased：回收到操作系统的内存
-
-			var m runtime.MemStats
-			runtime.ReadMemStats(&m)
-			seelog.Debugf("%d,%d,%d,%d,%d,%d\n", m.HeapSys, m.HeapAlloc, m.HeapIdle, m.Alloc, m.NumGC, m.HeapReleased)
-		*/
+			if util.IsDev() {
+				/**
+				HeapSys：程序向应用程序申请的内存
+				HeapAlloc：堆上目前分配的内存
+				HeapIdle：堆上目前没有使用的内存
+				Alloc : 已经被配并仍在使用的字节数
+				NumGC : GC次数
+				HeapReleased：回收到操作系统的内存
+				*/
+				var m runtime.MemStats
+				runtime.ReadMemStats(&m)
+				seelog.Debugf("MemStat => HeapSys: %d, HeapAlloc: %d, HeapIdle: %d, Alloc: %d, NumGC: %d, HeapReleased: %d",
+					m.HeapSys, m.HeapAlloc, m.HeapIdle, m.Alloc, m.NumGC, m.HeapReleased)
+			}
 		}
 	}
 

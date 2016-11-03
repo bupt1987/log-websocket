@@ -19,7 +19,7 @@ const (
 )
 
 type MessageProcess interface {
-	Process(msg *Msg, conn *net.Conn)
+	Process(msg *Msg, conn net.Conn)
 }
 
 type MessageWorker struct {
@@ -31,11 +31,11 @@ type Msg struct {
 	Data     []byte
 }
 
-type BaseMessage struct {
+type BaseMessageProcesser struct {
 	Hub *Hub
 }
 
-func (m *BaseMessage) Process(msg *Msg, conn *net.Conn) {
+func (m *BaseMessageProcesser) Process(msg *Msg, conn net.Conn) {
 	m.Hub.Broadcast <- msg
 }
 
@@ -50,7 +50,7 @@ func FormatMsg(data []byte) *Msg {
 	return &Msg{Category: string(message[0]), Data: message[1]};
 }
 
-func ProcessMsg(worker MessageWorker, msg *Msg, conn *net.Conn) {
+func ProcessMsg(worker MessageWorker, msg *Msg, conn net.Conn) {
 	defer func() {
 		if err := recover(); err != nil {
 			seelog.Error("ProcessMsg error: ", err);

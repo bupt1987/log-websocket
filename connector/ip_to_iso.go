@@ -7,15 +7,15 @@ import (
 	"bytes"
 )
 
-type IpToIsoMessage struct {
+type IpToIsoMessageProcesser struct {
 
 }
 
 type NewUserLog struct {
-	Ip    string
+	Ip string
 }
 
-func (m *IpToIsoMessage) Process(msg *Msg, conn *net.Conn) {
+func (m *IpToIsoMessageProcesser) Process(msg *Msg, conn net.Conn) {
 	var sIso = MESSAGE_NEW_LINE_STRING
 	ip := string(bytes.TrimRight(msg.Data, MESSAGE_NEW_LINE_STRING))
 
@@ -28,5 +28,5 @@ func (m *IpToIsoMessage) Process(msg *Msg, conn *net.Conn) {
 		}
 	}
 
-	(*conn).Write([]byte(sIso))
+	conn.Write([]byte(sIso))
 }

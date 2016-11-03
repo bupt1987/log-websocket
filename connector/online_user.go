@@ -50,9 +50,9 @@ type UserSet struct {
 const (
 	REDIS_ONLINE_USER_KEY = "dwlog_stock_online_user"
 	REDIS_ONLINE_USER_AREA_KEY = "dwlog_online_user_area"
-	REDIS_CCU_KEY = "dwlog_ccu"
+	REDIS_CCU_KEY = "dwlog_ccu" //当前在线人数
 	REDIS_PCU_KEY = "dwlog_pcu" //当日最高在线人数
-	MAX_CHECK_TIME = 420 //test 60, prod 420
+	MAX_CHECK_TIME = 420 //test 60, prod 420, 7分钟是为了兼容分析log晚于当前时间2分钟, 实际算的是5分钟有没有操作
 	DATE_TIME_FORMAT = "200601021504"
 	DATE_FORMAT = "20060102"
 )

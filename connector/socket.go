@@ -15,6 +15,7 @@ type Socket struct {
 	chConn   chan *net.Conn
 	socket   string
 	listen   net.Listener
+	startListen bool
 }
 
 var msgWorkers = make(map[string]MessageWorker)
@@ -24,8 +25,9 @@ func SetMsgWorker(workers map[string]MessageWorker) {
 }
 
 func (l *Socket) Listen() {
+	l.startListen = true
 	go func() {
-		seelog.Info("Push running...")
+		seelog.Info("Local socket listening...")
 		for {
 			conn, err := l.listen.Accept()
 			if err != nil {
@@ -53,7 +55,7 @@ func (l *Socket) Listen() {
 					}
 					if err != nil {
 						if err != io.EOF {
-							seelog.Errorf("read log error: %s", err)
+							seelog.Errorf("Read log error: %s", err)
 						}
 						break
 					}
@@ -64,10 +66,15 @@ func (l *Socket) Listen() {
 }
 
 func (l *Socket) Stop() {
-	l.chClose <- 1
+	if (l.startListen) {
+		l.chClose <- 1
+	}
 	l.listen.Close()
-	<-l.chClosed
-	seelog.Info("Push stoped")
+	if (l.startListen) {
+		<-l.chClosed
+	}
+	l.startListen = false
+	seelog.Info("Local socket listen stoped")
 }
 
 var oSocket *Socket

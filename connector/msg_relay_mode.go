@@ -9,6 +9,7 @@ import (
 	"github.com/gorilla/websocket"
 	"time"
 	"strings"
+	"math"
 )
 
 const (
@@ -38,7 +39,7 @@ func NewRelay(addr string, access_token string) *WsRelayClient {
 }
 
 func (c *WsRelayClient) Listen() {
-	c.connect(3)
+	c.connect(1)
 }
 
 func (c *WsRelayClient) connect(retry int) {
@@ -46,7 +47,9 @@ func (c *WsRelayClient) connect(retry int) {
 		return
 	}
 
-	defer util.PanicExit()
+	defer func() {
+		util.PanicExit()
+	}()
 
 	var conn *websocket.Conn;
 	var err error
@@ -54,11 +57,15 @@ func (c *WsRelayClient) connect(retry int) {
 	dialer := websocket.DefaultDialer
 	dialer.HandshakeTimeout = time.Millisecond * 100
 
-	for i := 0; i < retry; i++ {
+	for i := 1; i <= retry || retry < 0; i++ {
 		conn, _, err = dialer.Dial(c.url, c.header)
 		if err != nil {
-			time.Sleep(time.Second * 1)
-			seelog.Errorf("Can not connect master: %v", err)
+			if (i % 100 == 1) {
+				seelog.Errorf("No.%d Can not connect master: %v", i, err)
+			}
+
+			sleep := time.Duration(math.Min((math.Floor(float64(i / 100)) + 1) * 100, 10000))
+			time.Sleep(time.Millisecond * sleep)
 			continue
 		}
 
@@ -101,7 +108,7 @@ func (c *WsRelayClient) connect(retry int) {
 			ticker.Stop()
 			c.conn.Close()
 			c.conn = nil
-			c.connect(999999999999)
+			c.connect(-1)
 		}()
 		for {
 			select {
@@ -142,7 +149,7 @@ func (c *WsRelayClient) connect(retry int) {
 		}
 	}()
 
-	seelog.Infof("Master connected %s", c.url)
+	seelog.Infof("Master %s connected", c.url)
 }
 
 type RelayMessageProcesser struct {

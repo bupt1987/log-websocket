@@ -141,7 +141,7 @@ func main() {
 		case <-chSig:
 			return
 		case <-time.After(60 * time.Second):
-			if util.IsDev() {
+			if util.IsDev() && *mode == CLIENT_MODE_MASTER {
 				/**
 				HeapSys：程序向应用程序申请的内存
 				HeapAlloc：堆上目前分配的内存
@@ -152,10 +152,8 @@ func main() {
 				*/
 				var m runtime.MemStats
 				runtime.ReadMemStats(&m)
-				if util.IsDev() {
-					seelog.Debugf("MemStat => HeapSys: %d, HeapAlloc: %d, HeapIdle: %d, Alloc: %d, NumGC: %d, HeapReleased: %d",
+				seelog.Debugf("MemStat => HeapSys: %d, HeapAlloc: %d, HeapIdle: %d, Alloc: %d, NumGC: %d, HeapReleased: %d",
 						m.HeapSys, m.HeapAlloc, m.HeapIdle, m.Alloc, m.NumGC, m.HeapReleased)
-				}
 			}
 		}
 	}

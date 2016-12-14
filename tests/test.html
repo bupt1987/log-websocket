@@ -30,7 +30,7 @@
 			};
 
 			if (window["WebSocket"]) {
-				conn = new WebSocket("ws://127.0.0.1:9090/?listens=*");
+				conn = new WebSocket("ws://127.0.0.1:9090/?listens=*&access_token=oQjcVqVIWYx81YW1wc6CbQf0ZUOqcENn");
 				conn.onclose = function () {
 					var item = document.createElement("div");
 					item.innerHTML = "<b>Connection closed.</b>";

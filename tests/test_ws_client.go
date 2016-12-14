@@ -12,12 +12,13 @@ import (
 	"syscall"
 
 	"github.com/gorilla/websocket"
+	"net/http"
 )
 
-var addr = flag.String("addr", "127.0.0.1:9090", "http service address")
-var listens = flag.String("listens", "*", "listens message type")
 
 func main() {
+	addr := flag.String("addr", "127.0.0.1:9090", "http service address")
+	listens := flag.String("listens", "*", "listens message type")
 	flag.Parse()
 	log.SetFlags(0)
 
@@ -30,7 +31,10 @@ func main() {
 	u := url.URL{Scheme: "ws", Host: *addr, Path: "/", RawQuery: "listens=" + *listens}
 	log.Printf("connecting to %s", u.String())
 
-	c, _, err := websocket.DefaultDialer.Dial(u.String(), nil)
+	header := make(http.Header);
+	header.Add("access_token", "oQjcVqVIWYx81YW1wc6CbQf0ZUOqcENn");
+	header.Add("client_mode", "relay")
+	c, _, err := websocket.DefaultDialer.Dial(u.String(), header)
 	if err != nil {
 		log.Fatal("dial:", err)
 	}
@@ -40,7 +44,6 @@ func main() {
 	closed := make(chan struct{})
 
 	go func() {
-		defer c.Close()
 		defer close(done)
 		defer close(closed)
 		for {
@@ -75,7 +78,6 @@ func main() {
 			case <-done:
 			case <-time.After(time.Second):
 			}
-			c.Close()
 			return
 		}
 	}

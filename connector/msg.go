@@ -50,6 +50,10 @@ func FormatMsg(data []byte) *Msg {
 	return &Msg{Category: string(message[0]), Data: message[1]};
 }
 
+func RevertMsg(msg *Msg) []byte {
+	return bytes.Join([][]byte{[]byte(msg.Category), msg.Data}, comma)
+}
+
 func ProcessMsg(worker MessageWorker, msg *Msg, conn net.Conn) {
 	defer func() {
 		if err := recover(); err != nil {

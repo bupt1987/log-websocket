@@ -2,8 +2,6 @@ package connector
 
 import (
 	"time"
-	"net/http"
-	"strings"
 	"github.com/gorilla/websocket"
 	"github.com/cihub/seelog"
 )
@@ -20,46 +18,11 @@ const (
 )
 
 type Client struct {
+	mode    string
 	listens []string
 	hub     *Hub
 	conn    *websocket.Conn
 	send    chan []byte
-}
-
-var upgrader = websocket.Upgrader{
-	ReadBufferSize:  1024,
-	WriteBufferSize: 1024,
-	CheckOrigin: func(r *http.Request) bool {
-		return true
-	},
-}
-
-func ServeWs(hub *Hub, w http.ResponseWriter, r *http.Request) {
-	conn, err := upgrader.Upgrade(w, r, nil)
-	if err != nil {
-		seelog.Error(err)
-		return
-	}
-	r.ParseForm()
-	var listens = strings.TrimSpace(r.Form.Get("listens"))
-	if len(listens) == 0 {
-		conn.Close()
-		return
-	}
-	//如果listens里面有*的话则只保留*
-	var checkListens = "," + listens + ",";
-	if checkListens != ",*," && strings.Index(checkListens, ",*,") != -1 {
-		listens = "*"
-	}
-	client := &Client{
-		listens: strings.Split(listens, ","),
-		hub: hub,
-		conn: conn,
-		send: make(chan []byte, 256),
-	}
-	hub.register <- client
-	go client.push()
-	client.listen()
 }
 
 func (c *Client) write(mt int, payload []byte) error {
@@ -90,7 +53,11 @@ func (c *Client) listen() {
 		if (msg == nil) {
 			continue
 		}
-		c.hub.Broadcast <- msg
+		if (c.mode == CLIENT_MODE_RELAY) {
+			SocketProcessMsg(msg, nil)
+		} else {
+			c.hub.Broadcast <- msg
+		}
 	}
 }
 

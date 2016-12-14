@@ -52,7 +52,8 @@ func (h *Hub) Run() {
 					h.listens[listen][client] = true
 				}
 				h.num ++;
-				seelog.Infof("%s connected, listen : %v, total connected: %v", client.conn.RemoteAddr(), client.listens, h.num)
+				seelog.Infof("%s connected, mode: %s , listen : %v, total connected: %v",
+					client.conn.RemoteAddr(), client.mode, client.listens, h.num)
 			case client := <-h.unregister:
 				if _, ok := h.clients[client]; ok {
 					func() {
@@ -87,7 +88,9 @@ func (h *Hub) Run() {
 						}
 					} else {
 						for client := range h.clients {
-							h.push(client, msg.Data)
+							if (client.mode != CLIENT_MODE_RELAY) {
+								h.push(client, msg.Data)
+							}
 						}
 					}
 				}()

@@ -17,7 +17,13 @@ type Socket struct {
 	listen   net.Listener
 }
 
-func (l *Socket) Listen(workers map[string]MessageWorker) {
+var msgWorkers = make(map[string]MessageWorker)
+
+func SetMsgWorker(workers map[string]MessageWorker) {
+	msgWorkers = workers
+}
+
+func (l *Socket) Listen() {
 	go func() {
 		seelog.Info("Push running...")
 		for {
@@ -32,7 +38,6 @@ func (l *Socket) Listen(workers map[string]MessageWorker) {
 					continue
 				}
 			}
-			seelog.Debugf("new connect %v", conn.LocalAddr())
 
 			go func() {
 				defer conn.Close()
@@ -44,17 +49,11 @@ func (l *Socket) Listen(workers map[string]MessageWorker) {
 						if (msg == nil) {
 							continue
 						}
-						if _, ok := workers[msg.Category]; !ok {
-							ProcessMsg(workers["*"], msg, conn);
-						} else {
-							ProcessMsg(workers[msg.Category], msg, conn);
-						}
+						SocketProcessMsg(msg, conn)
 					}
 					if err != nil {
 						if err != io.EOF {
-							seelog.Error("read log error:", err.Error())
-						} else {
-							seelog.Debugf("close connect %v", conn.LocalAddr())
+							seelog.Errorf("read log error: %s", err)
 						}
 						break
 					}
@@ -71,7 +70,22 @@ func (l *Socket) Stop() {
 	seelog.Info("Push stoped")
 }
 
+var oSocket *Socket
+
+func SocketProcessMsg(msg *Msg, conn net.Conn) {
+	if _, ok := msgWorkers[msg.Category]; !ok {
+		ProcessMsg(msgWorkers["*"], msg, conn);
+	} else {
+		ProcessMsg(msgWorkers[msg.Category], msg, conn);
+	}
+}
+
 func NewSocket(socket string) *Socket {
+
+	if oSocket != nil {
+		return oSocket
+	}
+
 	defer util.PanicExit()
 
 	//监听
@@ -84,7 +98,7 @@ func NewSocket(socket string) *Socket {
 		panic(err)
 	}
 
-	l := &Socket{
+	oSocket = &Socket{
 		chClosed: make(chan int, 1),
 		chClose: make(chan int, 1),
 		chConn : make(chan *net.Conn, 128),
@@ -92,5 +106,5 @@ func NewSocket(socket string) *Socket {
 		listen: listen,
 	}
 
-	return l
+	return oSocket
 }

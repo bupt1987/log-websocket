@@ -45,5 +45,7 @@ func PushSessionImmediately() {
 		reids.LPush(REDIS_SESSION_LENGTH, util.JsonEncode(iter.Value))
 	}
 	sessions.Init()
-	seelog.Debug("Session length pushed")
+	if util.IsDev() {
+		seelog.Debug("Session length pushed")
+	}
 }

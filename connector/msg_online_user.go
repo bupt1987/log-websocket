@@ -132,7 +132,9 @@ func (s *UserSet)Run() {
 				}
 
 			case <-s.cTime:
-				seelog.Debug("======================  Start check online user  ======================")
+				//if util.IsDev() {
+				//	seelog.Debug("======================  Start check online user  ======================")
+				//}
 
 				now := time.Now()
 				_today := now.UTC().Format(DATE_FORMAT)
@@ -166,7 +168,9 @@ func (s *UserSet)Run() {
 					today = _today
 				}
 
-				seelog.Debugf("Offline user: %v, current online user: %v, Pcu: %v", iOffLine, s.iUserNum, s.iPcu)
+				if util.IsDev() {
+					seelog.Debugf("Offline user: %v, current online user: %v, Pcu: %v", iOffLine, s.iUserNum, s.iPcu)
+				}
 
 				dateTime := now.UTC().Format(DATE_TIME_FORMAT)
 				totalData := map[string]interface{}{
@@ -187,7 +191,9 @@ func (s *UserSet)Run() {
 
 				analysis.PushSession()
 
-				seelog.Debug("=================================  End  ===============================")
+				//if util.IsDev() {
+				//	seelog.Debug("=================================  End  ===============================")
+				//}
 
 			case cDumpEnd := <-s.cDump:
 				seelog.Info("Start to dump data")
@@ -302,7 +308,9 @@ func (s *UserSet)push(category string, data interface{}) {
 	});
 
 	if (res != nil) {
-		seelog.Debugf("user online push: %v", string(res))
+		if util.IsDev() && category == LOG_TYPE_ONLINE_USER {
+			seelog.Debugf("User online push: %v", string(res))
+		}
 		s.oHub.Broadcast <- &Msg{Category: category, Data:res}
 	}
 }
@@ -315,7 +323,6 @@ func (s *UserSet)timeAfter(after int) {
 	if (after <= 0) {
 		after = 60
 	}
-	seelog.Debugf("Check online user will run after %vs", after)
 	time.AfterFunc(time.Duration(after) * time.Second, func() {
 		s.timeAfter(60)
 		s.cTime <- 1

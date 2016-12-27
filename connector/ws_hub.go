@@ -56,19 +56,17 @@ func (h *Hub) Run() {
 					client.conn.RemoteAddr(), client.mode, client.listens, h.num)
 			case client := <-h.unregister:
 				if _, ok := h.clients[client]; ok {
-					func() {
-						defer func() {
-							recover()
-						}()
-						for _, listen := range client.listens {
-							if len(listen) == 0 {
-								continue
-							}
-							delete(h.listens[listen], client)
+					for _, listen := range client.listens {
+						if len(listen) == 0 {
+							continue
 						}
-						delete(h.clients, client)
-						close(client.send)
-					}()
+						if _, ok := h.listens[listen]; !ok {
+							continue
+						}
+						delete(h.listens[listen], client)
+					}
+					delete(h.clients, client)
+					close(client.send)
 					h.num --;
 					seelog.Infof("%s close, total connected: %v", client.conn.RemoteAddr(), h.num)
 				}

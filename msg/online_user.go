@@ -12,6 +12,7 @@ import (
 	"github.com/bupt1987/log-websocket/util"
 	"github.com/bupt1987/log-websocket/analysis"
 	"github.com/bupt1987/log-websocket/connector"
+	"strings"
 )
 
 type area struct {
@@ -60,8 +61,8 @@ const (
 
 var today = time.Now().UTC().Format(DATE_FORMAT)
 
-func NewUserSet(id string, hub *connector.Hub) *UserSet {
-	root, _ := os.Getwd()
+func NewUserSet(id string, root string, hub *connector.Hub) *UserSet {
+	root = strings.TrimRight(root, "/")
 	dumpFiles := map[string]string{
 		"user": root + "/dump_" + id + "_user.json",
 		"area": root + "/dump_" + id + "_area.json",

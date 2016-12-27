@@ -25,12 +25,10 @@ func main() {
 	addr := flag.String("addr", ":9090", "http service address")
 	masterAddr := flag.String("master", "127.0.0.1:9090", "http service address")
 	socket := flag.String("socket", "/tmp/log-stock.socket", "Listen socket address")
-	geoipdata := flag.String("geoip", "./GeoLite2-City.mmdb", "GeoIp data file path")
-	geoipdatamd5 := flag.String("md5", "./GeoLite2-City.md5", "GeoIp data md5 file path")
-	level := flag.String("level", "debug", "Logger level")
-	sInfoFile := flag.String("info", "./info.log", "Info log file")
-	sErrorFile := flag.String("error", "./error.log", "Error log file")
-	sPanicFile := flag.String("panic", "./panic.dump", "Panic log file")
+	geoipdata := flag.String("geoip", "./_tmp/GeoLite2-City.mmdb", "GeoIp data file path")
+	geoipdatamd5 := flag.String("md5", "./_tmp/GeoLite2-City.md5", "GeoIp data md5 file path")
+	sDumpPath := flag.String("dump", "./_tmp/", "Dump file path")
+	sLoggerConfig := flag.String("log", "./logger.xml", "log config file")
 	mode := flag.String("mode", CLIENT_MODE_MASTER, "Run model: master or relay")
 	accessToken := flag.String("access_token", "oQjcVqVIWYx81YW1wc6CbQf0ZUOqcENn", "websocket access token")
 
@@ -41,24 +39,7 @@ func main() {
 	flag.Parse()
 
 	//init logger
-	newLogger, err := seelog.LoggerFromConfigAsString(
-		"<seelog minlevel=\"" + *level + "\">" +
-			"<outputs formatid=\"main\">" +
-			"<console />" +
-			"<filter levels=\"info\">" +
-			"<rollingfile type=\"size\" filename=\"" + *sInfoFile + "\" maxsize=\"10485760\" maxrolls=\"2\" />" +
-			"</filter>" +
-			"<filter levels=\"warn,error\">" +
-			"<rollingfile type=\"date\" filename=\"" + *sErrorFile + "\" datepattern=\"2006.01.02\" />" +
-			"</filter>" +
-			"<filter levels=\"critical\">" +
-			"<rollingfile type=\"size\" filename=\"" + *sPanicFile + "\" maxsize=\"10485760\" />" +
-			"</filter>" +
-			"</outputs>" +
-			"<formats>" +
-			"<format id=\"main\" format=\"[%Date %Time][%Level] %File : %Msg%n\"/>" +
-			"</formats>" +
-			"</seelog>")
+	newLogger, err := seelog.LoggerFromConfigAsFile(*sLoggerConfig)
 	if err != nil {
 		panic(err)
 	}
@@ -70,14 +51,13 @@ func main() {
 	// close redis connect
 	defer util.GetRedis().Close()
 
+	//init geoip
+	geoip := util.InitGeoip(*geoipdata, *geoipdatamd5)
+	defer geoip.Close()
+
 	var oLocalSocket *connector.Socket;
 
 	if (*mode == CLIENT_MODE_RELAY || !util.IsDev()) {
-
-		//init geoip
-		geoip := util.InitGeoip(*geoipdata, *geoipdatamd5)
-		defer geoip.Close()
-
 		//local socket
 		oLocalSocket = connector.NewSocket(*socket)
 		defer oLocalSocket.Stop()
@@ -105,7 +85,7 @@ func main() {
 		}()
 
 		// 在线用户
-		userSet := msg.NewUserSet("dw_online_user", hub)
+		userSet := msg.NewUserSet("dw_online_user", *sDumpPath, hub)
 		defer userSet.Dump()
 		defer analysis.PushSessionImmediately()
 		userSet.Run()

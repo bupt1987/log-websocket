@@ -1,0 +1,17 @@
+<seelog minlevel="debug">
+    <outputs formatid="main">
+        <console/>
+        <filter levels="info">
+            <rollingfile type="size" filename="./_tmp/info.log" maxsize="10485760" maxrolls="2"/>"
+        </filter>
+        <filter levels="warn,error">
+            <rollingfile type="date" filename="./_tmp/error.log" datepattern="2006.01.02" maxrolls="7"/>
+        </filter>
+        <filter levels="critical">
+            <rollingfile type="size" filename="./_tmp/panic.dump" maxsize="10485760"/>
+        </filter>
+    </outputs>
+    <formats>
+        <format id="main" format="[%Date %Time][%RelFile(%Line)][%LEVEL]: %Msg%n"/>
+    </formats>
+</seelog>

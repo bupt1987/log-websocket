@@ -8,7 +8,7 @@ import (
 )
 
 const (
-	REDIS_SESSION_LENGTH = "dwlog_session_length"
+	REDIS_KEY_SESSION_LENGTH = "dwlog_session_length"
 )
 
 var sessions *list.List = new(list.List)
@@ -42,7 +42,7 @@ func PushSessionImmediately() {
 
 	reids := util.GetRedis()
 	for iter := sessions.Front(); iter != nil; iter = iter.Next() {
-		reids.LPush(REDIS_SESSION_LENGTH, util.JsonEncode(iter.Value))
+		reids.LPush(REDIS_KEY_SESSION_LENGTH, util.JsonEncode(iter.Value))
 	}
 	sessions.Init()
 	if util.IsDev() {

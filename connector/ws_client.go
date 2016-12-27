@@ -8,13 +8,13 @@ import (
 
 const (
 	// Time allowed to write a message to the peer.
-	writeWait = 10 * time.Second
+	WriteWait = 10 * time.Second
 	// Time allowed to read the next pong message from the peer.
-	pongWait = 60 * time.Second
+	PongWait = 60 * time.Second
 	// Send pings to peer with this period. Must be less than pongWait.
-	pingPeriod = (pongWait * 9) / 10
+	PingPeriod = (PongWait * 9) / 10
 	// Maximum message size allowed from peer.
-	maxMessageSize = 1024 * 1024
+	MaxMessageSize = 1024 * 1024
 )
 
 type Client struct {
@@ -26,7 +26,7 @@ type Client struct {
 }
 
 func (c *Client) write(mt int, payload []byte) error {
-	c.conn.SetWriteDeadline(time.Now().Add(writeWait))
+	c.conn.SetWriteDeadline(time.Now().Add(WriteWait))
 	return c.conn.WriteMessage(mt, payload)
 }
 
@@ -35,10 +35,10 @@ func (c *Client) listen() {
 		c.hub.unregister <- c
 		c.conn.Close()
 	}()
-	c.conn.SetReadLimit(maxMessageSize)
-	c.conn.SetReadDeadline(time.Now().Add(pongWait))
+	c.conn.SetReadLimit(MaxMessageSize)
+	c.conn.SetReadDeadline(time.Now().Add(PongWait))
 	c.conn.SetPongHandler(func(string) error {
-		c.conn.SetReadDeadline(time.Now().Add(pongWait))
+		c.conn.SetReadDeadline(time.Now().Add(PongWait))
 		return nil
 	})
 	for {
@@ -62,7 +62,7 @@ func (c *Client) listen() {
 }
 
 func (c *Client) push() {
-	ticker := time.NewTicker(pingPeriod)
+	ticker := time.NewTicker(PingPeriod)
 	defer func() {
 		ticker.Stop()
 		c.conn.Close()
@@ -75,7 +75,7 @@ func (c *Client) push() {
 				return
 			}
 
-			c.conn.SetWriteDeadline(time.Now().Add(writeWait))
+			c.conn.SetWriteDeadline(time.Now().Add(WriteWait))
 			w, err := c.conn.NextWriter(websocket.TextMessage)
 			if err != nil {
 				return

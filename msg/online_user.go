@@ -1,4 +1,4 @@
-package connector
+package msg
 
 import (
 	"github.com/cihub/seelog"
@@ -11,6 +11,7 @@ import (
 	"net"
 	"github.com/bupt1987/log-websocket/util"
 	"github.com/bupt1987/log-websocket/analysis"
+	"github.com/bupt1987/log-websocket/connector"
 )
 
 type area struct {
@@ -37,7 +38,7 @@ type User struct {
 type UserSet struct {
 	id        string
 	mDumpFile map[string]string
-	oHub      *Hub
+	oHub      *connector.Hub
 	cTime     chan int
 	cDump     chan chan int
 	cUser     chan *User
@@ -59,7 +60,7 @@ const (
 
 var today = time.Now().UTC().Format(DATE_FORMAT)
 
-func NewUserSet(id string, hub *Hub) *UserSet {
+func NewUserSet(id string, hub *connector.Hub) *UserSet {
 	root, _ := os.Getwd()
 	dumpFiles := map[string]string{
 		"user": root + "/dump_" + id + "_user.json",
@@ -186,8 +187,8 @@ func (s *UserSet)Run() {
 				oRedis.Set(REDIS_ONLINE_USER_AREA_KEY, util.JsonEncode(totalData), 0)
 				oRedis.HSet(REDIS_CCU_KEY, dateTime, sUserNum)
 
-				s.push(LOG_TYPE_ONLINE_USER, sUserNum)
-				s.push(LOG_TYPE_ONLINE_USER_AREA, totalData)
+				s.push(ONLINE_USER, sUserNum)
+				s.push(ONLINE_USER_AREA, totalData)
 
 				analysis.PushSession()
 
@@ -308,10 +309,10 @@ func (s *UserSet)push(category string, data interface{}) {
 	});
 
 	if (res != nil) {
-		if util.IsDev() && category == LOG_TYPE_ONLINE_USER {
+		if util.IsDev() && category == ONLINE_USER {
 			seelog.Debugf("User online push: %v", string(res))
 		}
-		s.oHub.Broadcast <- &Msg{Category: category, Data:res}
+		s.oHub.Broadcast <- &connector.Msg{Category: category, Data:res}
 	}
 }
 
@@ -329,11 +330,11 @@ func (s *UserSet)timeAfter(after int) {
 	})
 }
 
-type OnlineUserMessageProcesser struct {
+type OnlineUserProcesser struct {
 	UserSet *UserSet
 }
 
-func (m *OnlineUserMessageProcesser) Process(msg *Msg, conn net.Conn) {
+func (m *OnlineUserProcesser) Process(msg *connector.Msg, conn net.Conn) {
 	var ip net.IP
 	var isoCode = ""
 	var countryName = ""

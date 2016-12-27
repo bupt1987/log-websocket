@@ -1,19 +1,13 @@
 package connector
 
 import (
+	"net"
 	"bytes"
 	"github.com/cihub/seelog"
-	"net"
 )
 
 var comma = []byte{','}
-
 const (
-	LOG_TYPE_ONLINE_USER_AREA = "online_user_area"
-	LOG_TYPE_ONLINE_USER = "online_user"
-	LOG_TYPE_IP_TO_ISO = "ip_to_iso"
-	LOG_TYPE_NORMAL = "*"
-
 	MESSAGE_NEW_LINE_STRING = "\n"
 	MESSAGE_NEW_LINE_BYTE = '\n'
 )
@@ -29,14 +23,6 @@ type MessageWorker struct {
 type Msg struct {
 	Category string
 	Data     []byte
-}
-
-type BaseMessageProcesser struct {
-	Hub *Hub
-}
-
-func (m *BaseMessageProcesser) Process(msg *Msg, conn net.Conn) {
-	m.Hub.Broadcast <- msg
 }
 
 func FormatMsg(data []byte) *Msg {

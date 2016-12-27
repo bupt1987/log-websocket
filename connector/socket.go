@@ -20,7 +20,7 @@ type Socket struct {
 
 var msgWorkers = make(map[string]MessageWorker)
 
-func SetMsgWorker(workers map[string]MessageWorker) {
+func SetSocketMsgWorker(workers map[string]MessageWorker) {
 	msgWorkers = workers
 }
 

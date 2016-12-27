@@ -13,6 +13,7 @@ import (
 	"github.com/cihub/seelog"
 	"runtime"
 	"github.com/bupt1987/log-websocket/analysis"
+	"github.com/bupt1987/log-websocket/msg"
 )
 
 const (
@@ -104,27 +105,27 @@ func main() {
 		}()
 
 		// 在线用户
-		userSet := connector.NewUserSet("dw_online_user", hub)
+		userSet := msg.NewUserSet("dw_online_user", hub)
 		defer userSet.Dump()
 		defer analysis.PushSessionImmediately()
 		userSet.Run()
 
 		msgWorkers = map[string]connector.MessageWorker{
-			connector.LOG_TYPE_ONLINE_USER: {P: &connector.OnlineUserMessageProcesser{UserSet: userSet}},
-			connector.LOG_TYPE_NORMAL: {P: &connector.BaseMessageProcesser{Hub:hub}},
-			connector.LOG_TYPE_IP_TO_ISO: {P:&connector.IpToIsoMessageProcesser{}},
+			msg.ANY: {P: &msg.BaseProcesser{Hub:hub}},
+			msg.ONLINE_USER: {P: &msg.OnlineUserProcesser{UserSet: userSet}},
+			msg.IP_TO_ISO: {P:&msg.IpToIsoProcesser{}},
 		}
 	} else {
-		wsClient := connector.NewRelay(*masterAddr, *accessToken)
+		wsClient := msg.NewRelay(*masterAddr, *accessToken)
 		wsClient.Listen()
 
 		msgWorkers = map[string]connector.MessageWorker{
-			connector.LOG_TYPE_NORMAL: {P: &connector.RelayMessageProcesser{Client: wsClient}},
-			connector.LOG_TYPE_IP_TO_ISO: {P:&connector.IpToIsoMessageProcesser{}},
+			msg.ANY: {P: &msg.RelayProcesser{Client: wsClient}},
+			msg.IP_TO_ISO: {P:&msg.IpToIsoProcesser{}},
 		}
 	}
 
-	connector.SetMsgWorker(msgWorkers)
+	connector.SetSocketMsgWorker(msgWorkers)
 
 	//开始处理socket数据
 	if (*mode == CLIENT_MODE_RELAY || !util.IsDev()) {

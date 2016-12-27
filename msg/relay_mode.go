@@ -1,4 +1,4 @@
-package connector
+package msg
 
 import (
 	"github.com/cihub/seelog"
@@ -10,6 +10,7 @@ import (
 	"time"
 	"strings"
 	"math"
+	"github.com/bupt1987/log-websocket/connector"
 )
 
 const (
@@ -70,13 +71,13 @@ func (c *WsRelayClient) connect(retry int) {
 		}
 
 		c.conn = conn
-		c.conn.SetReadLimit(maxMessageSize)
-		c.conn.SetReadDeadline(time.Now().Add(pongWait))
+		c.conn.SetReadLimit(connector.MaxMessageSize)
+		c.conn.SetReadDeadline(time.Now().Add(connector.PongWait))
 		c.conn.SetPongHandler(func(string) error {
 			if util.IsDev() {
 				seelog.Debug("Get pong msg")
 			}
-			c.conn.SetReadDeadline(time.Now().Add(pongWait))
+			c.conn.SetReadDeadline(time.Now().Add(connector.PongWait))
 			return nil
 		})
 		break
@@ -103,7 +104,7 @@ func (c *WsRelayClient) connect(retry int) {
 
 	//创建push携程
 	go func() {
-		ticker := time.NewTicker(pingPeriod)
+		ticker := time.NewTicker(connector.PingPeriod)
 		defer func() {
 			ticker.Stop()
 			c.conn.Close()
@@ -117,7 +118,7 @@ func (c *WsRelayClient) connect(retry int) {
 					continue
 				}
 
-				c.conn.SetWriteDeadline(time.Now().Add(writeWait))
+				c.conn.SetWriteDeadline(time.Now().Add(connector.WriteWait))
 				w, err := c.conn.NextWriter(websocket.TextMessage)
 				if err != nil {
 					seelog.Errorf("Get ws writer error: %v", err)
@@ -127,7 +128,7 @@ func (c *WsRelayClient) connect(retry int) {
 				w.Write(message)
 
 				if util.IsDev() {
-					seelog.Debugf("Send msg to master: %s", strings.TrimRight(string(message), MESSAGE_NEW_LINE_STRING))
+					seelog.Debugf("Send msg to master: %s", strings.TrimRight(string(message), connector.MESSAGE_NEW_LINE_STRING))
 				}
 
 				if err := w.Close(); err != nil {
@@ -137,7 +138,7 @@ func (c *WsRelayClient) connect(retry int) {
 			case <-c.close:
 				return
 			case <-ticker.C:
-				c.conn.SetWriteDeadline(time.Now().Add(writeWait))
+				c.conn.SetWriteDeadline(time.Now().Add(connector.WriteWait))
 				if err := c.conn.WriteMessage(websocket.PingMessage, []byte{}); err != nil {
 					seelog.Errorf("send ping error: %v", err)
 					return
@@ -152,15 +153,15 @@ func (c *WsRelayClient) connect(retry int) {
 	seelog.Infof("Master %s connected", c.url)
 }
 
-type RelayMessageProcesser struct {
+type RelayProcesser struct {
 	Client *WsRelayClient
 }
 
-func (m *RelayMessageProcesser) Process(msg *Msg, conn net.Conn) {
+func (m *RelayProcesser) Process(msg *connector.Msg, conn net.Conn) {
 	//todo 以后优化如果master连接断掉之后还有消息输入时消息如何处理, 是直接抛弃还是记录下来, 因为现在只有online类型的数据,如果
 	if m.Client.conn == nil {
 		seelog.Error("Master not connect, ignore msg");
 		return
 	}
-	m.Client.send <- RevertMsg(msg)
+	m.Client.send <- connector.RevertMsg(msg)
 }

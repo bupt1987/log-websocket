@@ -134,10 +134,6 @@ func (s *UserSet)Run() {
 				}
 
 			case <-s.cTime:
-				//if util.IsDev() {
-				//	seelog.Debug("======================  Start check online user  ======================")
-				//}
-
 				now := time.Now()
 				iStartTime := now.UnixNano() / int64(time.Microsecond)
 				_today := now.UTC().Format(DATE_FORMAT)
@@ -165,7 +161,10 @@ func (s *UserSet)Run() {
 				bDiffDay := _today != today
 				if (s.iUserNum > s.iPcu || bDiffDay) {
 					s.iPcu = s.iUserNum
-					oRedis.HSet(REDIS_PCU_KEY, _today, strconv.Itoa(s.iPcu))
+					sPcu := strconv.Itoa(s.iPcu)
+					go func() {
+						oRedis.HSet(REDIS_PCU_KEY, _today, sPcu)
+					}()
 				}
 				if (bDiffDay) {
 					today = _today
@@ -184,20 +183,20 @@ func (s *UserSet)Run() {
 				}
 
 				sUserNum := strconv.Itoa(s.iUserNum)
+				iUserNum := s.iUserNum;
 
-				oRedis.Set(REDIS_ONLINE_USER_KEY, s.iUserNum, 0)
-				oRedis.Set(REDIS_ONLINE_USER_AREA_KEY, util.JsonEncode(totalData), 0)
-				oRedis.HSet(REDIS_CCU_KEY, dateTime, sUserNum)
+				go func() {
+					oRedis.Set(REDIS_ONLINE_USER_KEY, iUserNum, 0)
+					oRedis.Set(REDIS_ONLINE_USER_AREA_KEY, util.JsonEncode(totalData), 0)
+					oRedis.HSet(REDIS_CCU_KEY, dateTime, sUserNum)
 
-				s.push(ONLINE_USER, sUserNum)
-				s.push(ONLINE_USER_AREA, totalData)
+					s.push(ONLINE_USER, sUserNum)
+					s.push(ONLINE_USER_AREA, totalData)
+				}()
 
 				analysis.PushSession()
 
-				seelog.Infof("Check online user cost: %vus", time.Now().UnixNano() / int64(time.Microsecond) - iStartTime)
-				//if util.IsDev() {
-				//	seelog.Debug("=================================  End  ===============================")
-				//}
+				seelog.Infof("Check online user cost: %vus, online: %v", time.Now().UnixNano() / int64(time.Microsecond) - iStartTime, iUserNum)
 
 			case cDumpEnd := <-s.cDump:
 				seelog.Info("Start to dump data")

@@ -6,27 +6,27 @@ import (
 	"github.com/bupt1987/log-websocket/util"
 )
 
-type Hub struct {
+type WsGroup struct {
 	num        int64
-	clients    map[*Client]bool
-	listens    map[string]map[*Client]bool
+	clients    map[*WsClient]bool
+	listens    map[string]map[*WsClient]bool
 	Broadcast  chan *Msg
-	register   chan *Client
-	unregister chan *Client
+	register   chan *WsClient
+	unregister chan *WsClient
 }
 
-func NewHub() *Hub {
-	return &Hub{
+func NewWsGroup() *WsGroup {
+	return &WsGroup{
 		num: 0,
 		Broadcast:  make(chan *Msg, runtime.NumCPU()),
-		register:   make(chan *Client),
-		unregister: make(chan *Client),
-		clients:    make(map[*Client]bool),
-		listens:    make(map[string]map[*Client]bool),
+		register:   make(chan *WsClient),
+		unregister: make(chan *WsClient),
+		clients:    make(map[*WsClient]bool),
+		listens:    make(map[string]map[*WsClient]bool),
 	}
 }
 
-func (h *Hub) push(client *Client, msg []byte) {
+func (h *WsGroup) push(client *WsClient, msg []byte) {
 	defer func() {
 		if err := recover(); err != nil {
 			seelog.Error("Hub.push error: ", err);
@@ -35,7 +35,7 @@ func (h *Hub) push(client *Client, msg []byte) {
 	client.send <- msg
 }
 
-func (h *Hub) Run() {
+func (h *WsGroup) Run() {
 	go func() {
 		defer util.PanicExit()
 		for {
@@ -47,7 +47,7 @@ func (h *Hub) Run() {
 						continue
 					}
 					if _, ok := h.listens[listen]; !ok {
-						h.listens[listen] = make(map[*Client]bool)
+						h.listens[listen] = make(map[*WsClient]bool)
 					}
 					h.listens[listen][client] = true
 				}

@@ -74,6 +74,7 @@ func InitGeoip(geoipdata string, md5File string) *GeoIp {
 	geoip.md5 = strings.TrimRight(_md5, "\n")
 	geoip.geoip = _geoip
 
+	seelog.Infof("GeoIp init finished ( Data => %v | MD5 => %v )", geoipdata, md5File)
 	geoip.Updata()
 
 	return geoip
@@ -100,15 +101,9 @@ func (g *GeoIp)Updata() {
 	} else {
 		iAfter = 3600
 	}
-	//if IsDev() {
-	//	seelog.Debugf("Check the update of geoip will run after %vs", iAfter)
-	//}
+
 	time.AfterFunc(time.Duration(iAfter) * time.Second, func() {
 		defer g.Updata()
-
-		//if IsDev() {
-		//	seelog.Debug("======================  Start check geoip data update  ======================")
-		//}
 
 		//获取data的MD5文件匹配
 		sNewMd5, err := g.getNewMd5()
@@ -175,9 +170,6 @@ func (g *GeoIp)Updata() {
 
 			seelog.Infof("Geoip data updata finished, md5: %v", sNewMd5)
 		}
-		//if IsDev() {
-		//	seelog.Debug("====================================  End  ==================================")
-		//}
 	})
 }
 
@@ -240,25 +232,20 @@ func (g *GeoIp)downloadData(toFile string) error {
 }
 
 func (g *GeoIp)getNewMd5() (string, error) {
-	//if IsDev() {
-	//	seelog.Debug("Start get geoip md5")
-	//}
 	//获取data的MD5文件
 	res, err := http.Get(GEOIP_MD5_URL)
-	defer res.Body.Close()
 	if (err != nil) {
 		seelog.Errorf("Get geoip md5 file error: %v", err)
 		return "", err
 	}
+	defer res.Body.Close()
 
 	_md5, err := ioutil.ReadAll(res.Body)
 	if err != nil {
 		seelog.Errorf("Get geoip md5 file error: %v", err)
 		return "", err
 	}
-	//if IsDev() {
-	//	seelog.Debugf("Get geoip md5: %s", _md5)
-	//}
+
 	return string(_md5), nil
 }
 

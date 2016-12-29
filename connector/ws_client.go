@@ -17,20 +17,20 @@ const (
 	MaxMessageSize = 1024 * 1024
 )
 
-type Client struct {
+type WsClient struct {
 	mode    string
 	listens []string
-	hub     *Hub
+	hub     *WsGroup
 	conn    *websocket.Conn
 	send    chan []byte
 }
 
-func (c *Client) write(mt int, payload []byte) error {
+func (c *WsClient) write(mt int, payload []byte) error {
 	c.conn.SetWriteDeadline(time.Now().Add(WriteWait))
 	return c.conn.WriteMessage(mt, payload)
 }
 
-func (c *Client) listen() {
+func (c *WsClient) listen() {
 	defer func() {
 		c.hub.unregister <- c
 		c.conn.Close()
@@ -61,7 +61,7 @@ func (c *Client) listen() {
 	}
 }
 
-func (c *Client) push() {
+func (c *WsClient) push() {
 	ticker := time.NewTicker(PingPeriod)
 	defer func() {
 		ticker.Stop()

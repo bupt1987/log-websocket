@@ -19,14 +19,14 @@ var upgrader = websocket.Upgrader{
 	},
 }
 
-var wsAuthKey = "oQjcVqVIWYx81YW1wc6CbQf0ZUOqcENn";
+var wsAccessToken = "oQjcVqVIWYx81YW1wc6CbQf0ZUOqcENn";
 
 func SetAccessToken(accessToken string) {
 	seelog.Infof("access token : %s", accessToken)
-	wsAuthKey = accessToken
+	wsAccessToken = accessToken
 }
 
-func ServeWs(hub *Hub, w http.ResponseWriter, r *http.Request) {
+func ServeWs(hub *WsGroup, w http.ResponseWriter, r *http.Request) {
 	conn, err := upgrader.Upgrade(w, r, nil)
 	if err != nil {
 		conn.Close();
@@ -35,14 +35,14 @@ func ServeWs(hub *Hub, w http.ResponseWriter, r *http.Request) {
 	}
 
 	r.ParseForm()
-	authKey := r.Header.Get("access_token")
-	if (authKey == "") {
-		authKey = r.Form.Get("access_token")
+	accessToken := r.Header.Get("access_token")
+	if (accessToken == "") {
+		accessToken = r.Form.Get("access_token")
 	}
 
-	if (authKey != wsAuthKey) {
+	if (accessToken != wsAccessToken) {
 		conn.Close();
-		seelog.Errorf("WS access_token error: %s", authKey)
+		seelog.Errorf("WS access_token error: %s", accessToken)
 		return
 	}
 
@@ -63,7 +63,7 @@ func ServeWs(hub *Hub, w http.ResponseWriter, r *http.Request) {
 		}
 	}
 
-	client := &Client{
+	client := &WsClient{
 		mode: mode,
 		listens: strings.Split(listens, ","),
 		hub: hub,

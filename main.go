@@ -13,10 +13,11 @@ import (
 	"github.com/cihub/seelog"
 	"runtime"
 	"github.com/bupt1987/log-websocket/analysis"
-	"github.com/bupt1987/log-websocket/msg"
+	"github.com/bupt1987/log-websocket/controller"
 )
 
 const (
+	CLIENT_MODE_ALL = "all"
 	CLIENT_MODE_MASTER = "master"
 	CLIENT_MODE_RELAY = "relay"
 )
@@ -29,7 +30,7 @@ func main() {
 	geoipdatamd5 := flag.String("md5", "./_tmp/GeoLite2-City.md5", "GeoIp data md5 file path")
 	sDumpPath := flag.String("dump", "./_tmp/", "Dump file path")
 	sLoggerConfig := flag.String("log", "./logger.xml", "log config file")
-	mode := flag.String("mode", CLIENT_MODE_MASTER, "Run model: master or relay")
+	mode := flag.String("mode", CLIENT_MODE_ALL, "Run model: master or relay, all")
 	accessToken := flag.String("access_token", "oQjcVqVIWYx81YW1wc6CbQf0ZUOqcENn", "websocket access token")
 
 	flag.Usage = func() {
@@ -43,10 +44,10 @@ func main() {
 	if err != nil {
 		panic(err)
 	}
+	defer util.PanicExit()
+
 	seelog.ReplaceLogger(newLogger);
 	defer seelog.Flush()
-
-	defer util.PanicExit()
 
 	// close redis connect
 	defer util.GetRedis().Close()
@@ -56,19 +57,20 @@ func main() {
 	defer geoip.Close()
 
 	var oLocalSocket *connector.Socket;
+	bInitLocalSocket := *mode == CLIENT_MODE_RELAY || *mode == CLIENT_MODE_ALL
 
-	if (*mode == CLIENT_MODE_RELAY || !util.IsDev()) {
+	if (bInitLocalSocket) {
 		//local socket
 		oLocalSocket = connector.NewSocket(*socket)
 		defer oLocalSocket.Stop()
 	}
 
 	// msg worker
-	msgWorkers := make(map[string]connector.MessageWorker)
+	msgWorkers := make(map[string]connector.MsgWorker)
 
-	if (*mode == CLIENT_MODE_MASTER) {
+	if (*mode != CLIENT_MODE_RELAY) {
 		//websocket 连接的客户端集合
-		hub := connector.NewHub()
+		hub := connector.NewWsGroup()
 		hub.Run()
 
 		// websocket listen
@@ -85,30 +87,31 @@ func main() {
 		}()
 
 		// 在线用户
-		userSet := msg.NewUserSet("dw_online_user", *sDumpPath, hub)
+		userSet := controller.NewUserSet("dw_online_user", *sDumpPath, hub)
 		defer userSet.Dump()
 		defer analysis.PushSessionImmediately()
 		userSet.Run()
 
-		msgWorkers = map[string]connector.MessageWorker{
-			msg.ANY: {P: &msg.BaseProcesser{Hub:hub}},
-			msg.ONLINE_USER: {P: &msg.OnlineUserProcesser{UserSet: userSet}},
-			msg.IP_TO_ISO: {P:&msg.IpToIsoProcesser{}},
+		msgWorkers = map[string]connector.MsgWorker{
+			controller.ANY: {P: &controller.Base{Group:hub}},
+			controller.ONLINE_USER: {P: &controller.OnlineUser{UserSet: userSet}},
+			controller.IP_TO_ISO: {P:&controller.IpToIso{}},
 		}
 	} else {
-		wsClient := msg.NewRelay(*masterAddr, *accessToken)
+		// relay mode
+		wsClient := controller.NewRelay(*masterAddr, *accessToken)
 		wsClient.Listen()
 
-		msgWorkers = map[string]connector.MessageWorker{
-			msg.ANY: {P: &msg.RelayProcesser{Client: wsClient}},
-			msg.IP_TO_ISO: {P:&msg.IpToIsoProcesser{}},
+		msgWorkers = map[string]connector.MsgWorker{
+			controller.ANY: {P: &controller.RelayMode{Client: wsClient}},
+			controller.IP_TO_ISO: {P:&controller.IpToIso{}},
 		}
 	}
 
 	connector.SetSocketMsgWorker(msgWorkers)
 
 	//开始处理socket数据
-	if (*mode == CLIENT_MODE_RELAY || !util.IsDev()) {
+	if (bInitLocalSocket) {
 		oLocalSocket.Listen()
 	}
 

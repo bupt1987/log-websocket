@@ -1,4 +1,4 @@
-package msg
+package controller
 
 import (
 	"github.com/cihub/seelog"
@@ -153,11 +153,11 @@ func (c *WsRelayClient) connect(retry int) {
 	seelog.Infof("Master %s connected", c.url)
 }
 
-type RelayProcesser struct {
+type RelayMode struct {
 	Client *WsRelayClient
 }
 
-func (m *RelayProcesser) Process(msg *connector.Msg, conn net.Conn) {
+func (m *RelayMode) Process(msg *connector.Msg, conn net.Conn) {
 	//todo 以后优化如果master连接断掉之后还有消息输入时消息如何处理, 是直接抛弃还是记录下来, 因为现在只有online类型的数据,如果
 	if m.Client.conn == nil {
 		seelog.Error("Master not connect, ignore msg");

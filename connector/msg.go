@@ -12,12 +12,12 @@ const (
 	MESSAGE_NEW_LINE_BYTE = '\n'
 )
 
-type MessageProcess interface {
+type MsgProcess interface {
 	Process(msg *Msg, conn net.Conn)
 }
 
-type MessageWorker struct {
-	P MessageProcess
+type MsgWorker struct {
+	P MsgProcess
 }
 
 type Msg struct {
@@ -40,7 +40,7 @@ func RevertMsg(msg *Msg) []byte {
 	return bytes.Join([][]byte{[]byte(msg.Category), msg.Data}, comma)
 }
 
-func ProcessMsg(worker MessageWorker, msg *Msg, conn net.Conn) {
+func ProcessMsg(worker MsgWorker, msg *Msg, conn net.Conn) {
 	defer func() {
 		if err := recover(); err != nil {
 			seelog.Error("ProcessMsg error: ", err);

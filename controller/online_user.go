@@ -1,4 +1,4 @@
-package msg
+package controller
 
 import (
 	"github.com/cihub/seelog"
@@ -21,7 +21,7 @@ type area struct {
 	UserNum int
 }
 
-type UserLog struct {
+type UserSession struct {
 	Uid        int
 	Ip         string
 	Start_Time int
@@ -39,7 +39,7 @@ type User struct {
 type UserSet struct {
 	id        string
 	mDumpFile map[string]string
-	oHub      *connector.Hub
+	oHub      *connector.WsGroup
 	cTime     chan int
 	cDump     chan chan int
 	cUser     chan *User
@@ -61,7 +61,7 @@ const (
 
 var today = time.Now().UTC().Format(DATE_FORMAT)
 
-func NewUserSet(id string, root string, hub *connector.Hub) *UserSet {
+func NewUserSet(id string, root string, hub *connector.WsGroup) *UserSet {
 	root = strings.TrimRight(root, "/")
 	dumpFiles := map[string]string{
 		"user": root + "/dump_" + id + "_user.json",
@@ -139,6 +139,7 @@ func (s *UserSet)Run() {
 				//}
 
 				now := time.Now()
+				iStartTime := now.UnixNano() / int64(time.Microsecond)
 				_today := now.UTC().Format(DATE_FORMAT)
 				iDiffTime := MAX_CHECK_TIME
 				if util.IsDev() {
@@ -193,6 +194,7 @@ func (s *UserSet)Run() {
 
 				analysis.PushSession()
 
+				seelog.Infof("Check online user cost: %vus", time.Now().UnixNano() / int64(time.Microsecond) - iStartTime)
 				//if util.IsDev() {
 				//	seelog.Debug("=================================  End  ===============================")
 				//}
@@ -331,15 +333,15 @@ func (s *UserSet)timeAfter(after int) {
 	})
 }
 
-type OnlineUserProcesser struct {
+type OnlineUser struct {
 	UserSet *UserSet
 }
 
-func (m *OnlineUserProcesser) Process(msg *connector.Msg, conn net.Conn) {
+func (m *OnlineUser) Process(msg *connector.Msg, conn net.Conn) {
 	var ip net.IP
 	var isoCode = ""
 	var countryName = ""
-	userLog := UserLog{}
+	userLog := UserSession{}
 
 	json.Unmarshal(msg.Data, &userLog)
 

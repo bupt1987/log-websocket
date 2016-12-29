@@ -1,4 +1,4 @@
-package msg
+package controller
 
 import (
 	"net"
@@ -12,10 +12,10 @@ const (
 	ANY = "*"
 )
 
-type BaseProcesser struct {
-	Hub *connector.Hub
+type Base struct {
+	Group *connector.WsGroup
 }
 
-func (m *BaseProcesser) Process(msg *connector.Msg, conn net.Conn) {
-	m.Hub.Broadcast <- msg
+func (m *Base) Process(msg *connector.Msg, conn net.Conn) {
+	m.Group.Broadcast <- msg
 }

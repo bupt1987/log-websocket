@@ -18,9 +18,9 @@ type Socket struct {
 	startListen bool
 }
 
-var msgWorkers = make(map[string]MessageWorker)
+var msgWorkers = make(map[string]MsgWorker)
 
-func SetSocketMsgWorker(workers map[string]MessageWorker) {
+func SetSocketMsgWorker(workers map[string]MsgWorker) {
 	msgWorkers = workers
 }
 

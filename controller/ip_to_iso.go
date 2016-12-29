@@ -1,4 +1,4 @@
-package msg
+package controller
 
 import (
 	"github.com/cihub/seelog"
@@ -8,15 +8,11 @@ import (
 	"github.com/bupt1987/log-websocket/connector"
 )
 
-type IpToIsoProcesser struct {
+type IpToIso struct {
 
 }
 
-type NewUserLog struct {
-	Ip string
-}
-
-func (m *IpToIsoProcesser) Process(msg *connector.Msg, conn net.Conn) {
+func (m *IpToIso) Process(msg *connector.Msg, conn net.Conn) {
 	var sIso = connector.MESSAGE_NEW_LINE_STRING
 	ip := string(bytes.TrimRight(msg.Data, connector.MESSAGE_NEW_LINE_STRING))
 

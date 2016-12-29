@@ -3,7 +3,6 @@ package controller
 import (
 	"github.com/cihub/seelog"
 	"time"
-	"encoding/json"
 	"strconv"
 	"gopkg.in/redis.v5"
 	"io/ioutil"
@@ -13,6 +12,7 @@ import (
 	"github.com/bupt1987/log-websocket/analysis"
 	"github.com/bupt1987/log-websocket/connector"
 	"strings"
+	"github.com/pquerna/ffjson/ffjson"
 )
 
 type area struct {
@@ -250,7 +250,7 @@ func (s *UserSet)loadDump() {
 		switch t {
 		case "user":
 			data := make(map[string]User)
-			err = json.Unmarshal(res, &data)
+			err = ffjson.Unmarshal(res, &data)
 			if (err != nil) {
 				seelog.Errorf("decode %v dump error", file)
 				continue
@@ -276,7 +276,7 @@ func (s *UserSet)loadDump() {
 			break
 		case "area":
 			data := make(map[string]area)
-			err = json.Unmarshal(res, &data)
+			err = ffjson.Unmarshal(res, &data)
 			if (err != nil) {
 				seelog.Errorf("decode %v dump error", file)
 				continue
@@ -342,7 +342,7 @@ func (m *OnlineUser) Process(msg *connector.Msg, conn net.Conn) {
 	var countryName = ""
 	userLog := UserSession{}
 
-	json.Unmarshal(msg.Data, &userLog)
+	ffjson.Unmarshal(msg.Data, &userLog)
 
 	if (userLog.Ip != "" && userLog.Ip != "unknown") {
 		ip = net.ParseIP(userLog.Ip)

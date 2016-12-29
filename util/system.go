@@ -5,7 +5,7 @@ import (
 	"flag"
 	"github.com/cihub/seelog"
 	"os"
-	"encoding/json"
+	"github.com/pquerna/ffjson/ffjson"
 )
 
 var isDev = flag.Bool("dev", true, "Is dev model")
@@ -22,7 +22,7 @@ func PanicExit() {
 }
 
 func JsonEncode(data interface{}) []byte {
-	res, err := json.Marshal(data)
+	res, err := ffjson.Marshal(data)
 	if (err != nil) {
 		seelog.Errorf("json_encode error: %v", err.Error())
 	}

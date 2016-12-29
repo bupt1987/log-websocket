@@ -44,7 +44,7 @@ func (c *WsClient) listen() {
 	for {
 		_, data, err := c.conn.ReadMessage()
 		if err != nil {
-			if websocket.IsUnexpectedCloseError(err, websocket.CloseGoingAway) {
+			if websocket.IsUnexpectedCloseError(err, websocket.CloseGoingAway, websocket.CloseAbnormalClosure) {
 				seelog.Errorf("close error: %v", err)
 			}
 			break

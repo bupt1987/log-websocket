@@ -29,7 +29,7 @@ func NewWsGroup() *WsGroup {
 func (h *WsGroup) push(client *WsClient, msg []byte) {
 	defer func() {
 		if err := recover(); err != nil {
-			seelog.Error("Hub.push error: ", err);
+			seelog.Error("WsGroup.push error, ", err);
 		}
 	}()
 	client.send <- msg
@@ -52,7 +52,7 @@ func (h *WsGroup) Run() {
 					h.listens[listen][client] = true
 				}
 				h.num ++;
-				seelog.Infof("%s connected, mode: %s , listen : %v, total connected: %v",
+				seelog.Debugf("%s connected, mode: %s , listen : %v, total connected: %v",
 					client.conn.RemoteAddr(), client.mode, client.listens, h.num)
 			case client := <-h.unregister:
 				if _, ok := h.clients[client]; ok {
@@ -68,7 +68,7 @@ func (h *WsGroup) Run() {
 					delete(h.clients, client)
 					close(client.send)
 					h.num --;
-					seelog.Infof("%s close, total connected: %v", client.conn.RemoteAddr(), h.num)
+					seelog.Debugf("%s close, total connected: %v", client.conn.RemoteAddr(), h.num)
 				}
 			case msg := <-h.Broadcast:
 				go func() {

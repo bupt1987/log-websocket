@@ -1,8 +1,2 @@
 /.idea/
 /log-websocket
-/GeoLite2-City.mmdb
-/GeoLite2-City.md5
-/*.json
-/*.log
-/error.log.*
-/*.dump

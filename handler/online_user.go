@@ -1,4 +1,4 @@
-package controller
+package handler
 
 import (
 	"github.com/cihub/seelog"
@@ -135,7 +135,7 @@ func (s *UserSet)Run() {
 
 			case <-s.cTime:
 				now := time.Now()
-				iStartTime := now.UnixNano() / int64(time.Microsecond)
+				iStartTime := now.UnixNano() / int64(time.Millisecond)
 				_today := now.UTC().Format(DATE_FORMAT)
 				iDiffTime := MAX_CHECK_TIME
 				if util.IsDev() {
@@ -196,7 +196,7 @@ func (s *UserSet)Run() {
 
 				analysis.PushSession()
 
-				seelog.Infof("Check online user cost: %vus, online: %v", time.Now().UnixNano() / int64(time.Microsecond) - iStartTime, iUserNum)
+				seelog.Infof("Check online user cost: %vms, online: %v", time.Now().UnixNano() / int64(time.Millisecond) - iStartTime, iUserNum)
 
 			case cDumpEnd := <-s.cDump:
 				seelog.Info("Start to dump data")

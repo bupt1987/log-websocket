@@ -2,6 +2,6 @@
 
 cd `dirname $0`
 
-go build -ldflags "-s -w" -o ./_tmp/log-websocket
+go build -ldflags "-s -w" -o ./log-websocket
 
 echo "Finished"

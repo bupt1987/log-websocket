@@ -13,7 +13,7 @@ import (
 	"github.com/cihub/seelog"
 	"runtime"
 	"github.com/bupt1987/log-websocket/analysis"
-	"github.com/bupt1987/log-websocket/controller"
+	"github.com/bupt1987/log-websocket/handler"
 )
 
 const (
@@ -57,9 +57,8 @@ func main() {
 	defer geoip.Close()
 
 	var oLocalSocket *connector.Socket;
-	bInitLocalSocket := *mode == CLIENT_MODE_RELAY || *mode == CLIENT_MODE_ALL
 
-	if (bInitLocalSocket) {
+	if (*mode != CLIENT_MODE_MASTER) {
 		//local socket
 		oLocalSocket = connector.NewSocket(*socket)
 		defer oLocalSocket.Stop()
@@ -87,31 +86,31 @@ func main() {
 		}()
 
 		// 在线用户
-		userSet := controller.NewUserSet("dw_online_user", *sDumpPath, hub)
+		userSet := handler.NewUserSet("dw_online_user", *sDumpPath, hub)
 		defer userSet.Dump()
 		defer analysis.PushSessionImmediately()
 		userSet.Run()
 
 		msgWorkers = map[string]connector.MsgWorker{
-			controller.ANY: {P: &controller.Base{Group:hub}},
-			controller.ONLINE_USER: {P: &controller.OnlineUser{UserSet: userSet}},
-			controller.IP_TO_ISO: {P:&controller.IpToIso{}},
+			handler.ANY: {P: &handler.Base{Group:hub}},
+			handler.ONLINE_USER: {P: &handler.OnlineUser{UserSet: userSet}},
+			handler.IP_TO_ISO: {P:&handler.IpToIso{}},
 		}
 	} else {
 		// relay mode
-		wsClient := controller.NewRelay(*masterAddr, *accessToken)
+		wsClient := handler.NewRelay(*masterAddr, *accessToken)
 		wsClient.Listen()
 
 		msgWorkers = map[string]connector.MsgWorker{
-			controller.ANY: {P: &controller.RelayMode{Client: wsClient}},
-			controller.IP_TO_ISO: {P:&controller.IpToIso{}},
+			handler.ANY: {P: &handler.RelayMode{Client: wsClient}},
+			handler.IP_TO_ISO: {P:&handler.IpToIso{}},
 		}
 	}
 
 	connector.SetSocketMsgWorker(msgWorkers)
 
 	//开始处理socket数据
-	if (bInitLocalSocket) {
+	if (oLocalSocket != nil) {
 		oLocalSocket.Listen()
 	}
 
@@ -125,7 +124,7 @@ func main() {
 		case <-chSig:
 			return
 		case <-time.After(60 * time.Second):
-			if util.IsDev() && *mode == CLIENT_MODE_MASTER {
+			if util.IsDev() && *mode != CLIENT_MODE_RELAY {
 				/**
 				HeapSys：程序向应用程序申请的内存
 				HeapAlloc：堆上目前分配的内存

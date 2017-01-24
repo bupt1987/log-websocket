@@ -323,11 +323,13 @@ func (s *UserSet)NewUser(user *User) {
 }
 
 func (s *UserSet)timeAfter(after int) {
-	if (after <= 0) {
-		after = 60
-	}
 	time.AfterFunc(time.Duration(after) * time.Second, func() {
-		s.timeAfter(60)
+		_after := 59 - time.Now().Second()
+		if (_after <= 0) {
+			_after = 60
+		}
+		//保证都在每分钟的59秒运行
+		s.timeAfter(_after)
 		s.cTime <- 1
 	})
 }

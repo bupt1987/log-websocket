@@ -19,6 +19,7 @@ import (
 const (
 	CLIENT_MODE_ALL = "all"
 	CLIENT_MODE_MASTER = "master"
+	CLIENT_MODE_GEOIP = "geoip"
 	CLIENT_MODE_RELAY = "relay"
 )
 
@@ -67,42 +68,48 @@ func main() {
 	// msg worker
 	msgWorkers := make(map[string]connector.MsgWorker)
 
-	if (*mode != CLIENT_MODE_RELAY) {
-		//websocket 连接的客户端集合
-		hub := connector.NewWsGroup()
-		hub.Run()
+	if (*mode != CLIENT_MODE_GEOIP) {
+		if (*mode != CLIENT_MODE_RELAY) {
+			//websocket 连接的客户端集合
+			hub := connector.NewWsGroup()
+			hub.Run()
 
-		// websocket listen
-		connector.SetAccessToken(*accessToken)
-		go func() {
-			defer util.PanicExit()
-			http.HandleFunc("/", func(w http.ResponseWriter, r *http.Request) {
-				connector.ServeWs(hub, w, r)
-			})
-			err := http.ListenAndServe(*addr, nil)
-			if err != nil {
-				panic(err)
+			// websocket listen
+			connector.SetAccessToken(*accessToken)
+			go func() {
+				defer util.PanicExit()
+				http.HandleFunc("/", func(w http.ResponseWriter, r *http.Request) {
+					connector.ServeWs(hub, w, r)
+				})
+				err := http.ListenAndServe(*addr, nil)
+				if err != nil {
+					panic(err)
+				}
+			}()
+
+			// 在线用户
+			userSet := handler.NewUserSet("dw_online_user", *sDumpPath, hub)
+			defer userSet.Dump()
+			defer analysis.PushSessionImmediately()
+			userSet.Run()
+
+			msgWorkers = map[string]connector.MsgWorker{
+				handler.ANY: {P: &handler.Base{Group:hub}},
+				handler.ONLINE_USER: {P: &handler.OnlineUser{UserSet: userSet}},
+				handler.IP_TO_ISO: {P:&handler.IpToIso{}},
 			}
-		}()
+		} else {
+			// relay mode
+			wsClient := handler.NewRelay(*masterAddr, *accessToken)
+			wsClient.Listen()
 
-		// 在线用户
-		userSet := handler.NewUserSet("dw_online_user", *sDumpPath, hub)
-		defer userSet.Dump()
-		defer analysis.PushSessionImmediately()
-		userSet.Run()
-
-		msgWorkers = map[string]connector.MsgWorker{
-			handler.ANY: {P: &handler.Base{Group:hub}},
-			handler.ONLINE_USER: {P: &handler.OnlineUser{UserSet: userSet}},
-			handler.IP_TO_ISO: {P:&handler.IpToIso{}},
+			msgWorkers = map[string]connector.MsgWorker{
+				handler.ANY: {P: &handler.RelayMode{Client: wsClient}},
+				handler.IP_TO_ISO: {P:&handler.IpToIso{}},
+			}
 		}
 	} else {
-		// relay mode
-		wsClient := handler.NewRelay(*masterAddr, *accessToken)
-		wsClient.Listen()
-
 		msgWorkers = map[string]connector.MsgWorker{
-			handler.ANY: {P: &handler.RelayMode{Client: wsClient}},
 			handler.IP_TO_ISO: {P:&handler.IpToIso{}},
 		}
 	}

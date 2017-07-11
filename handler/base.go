@@ -9,6 +9,7 @@ const (
 	ONLINE_USER_AREA = "online_user_area"
 	ONLINE_USER = "online_user"
 	IP_TO_ISO = "ip_to_iso"
+	IP_TO_GEO_INFO = "ip_to_geo_info"
 	ANY = "*"
 )
 

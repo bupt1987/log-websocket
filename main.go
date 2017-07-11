@@ -97,6 +97,7 @@ func main() {
 				handler.ANY: {P: &handler.Base{Group:hub}},
 				handler.ONLINE_USER: {P: &handler.OnlineUser{UserSet: userSet}},
 				handler.IP_TO_ISO: {P:&handler.IpToIso{}},
+				handler.IP_TO_GEO_INFO: {P:&handler.IpToGeoInfo{}},
 			}
 		} else {
 			// relay mode
@@ -106,11 +107,13 @@ func main() {
 			msgWorkers = map[string]connector.MsgWorker{
 				handler.ANY: {P: &handler.RelayMode{Client: wsClient}},
 				handler.IP_TO_ISO: {P:&handler.IpToIso{}},
+				handler.IP_TO_GEO_INFO: {P:&handler.IpToGeoInfo{}},
 			}
 		}
 	} else {
 		msgWorkers = map[string]connector.MsgWorker{
 			handler.IP_TO_ISO: {P:&handler.IpToIso{}},
+			handler.IP_TO_GEO_INFO: {P:&handler.IpToGeoInfo{}},
 		}
 	}
 
